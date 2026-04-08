@@ -25,10 +25,11 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory="../frontend"), name="static")
 
-from routers import cards, study
+from routers import cards, study, ai
 
 app.include_router(cards.router, prefix="/api", tags=["cards"])
 app.include_router(study.router, prefix="/api", tags=["study"])
+app.include_router(ai.router, prefix="/api", tags=["ai"])
 
 
 @app.get("/")
