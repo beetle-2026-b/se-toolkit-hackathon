@@ -6,7 +6,7 @@ import AIGenerateTab from './components/AIGenerateTab';
 import StudyTab from './components/StudyTab';
 import AIQuizTab from './components/AIQuizTab';
 import ProgressTab from './components/ProgressTab';
-import { getCards, getDecks, getStudyStats, getProgress } from './services/api';
+import { getCards, getDecks, getStudyStats, getScoredStudyStats, getProgress } from './services/api';
 
 function App() {
   const [activeTab, setActiveTab] = useState('cards');
@@ -14,6 +14,7 @@ function App() {
   const [selectedDeckId, setSelectedDeckId] = useState(null);
   const [cards, setCards] = useState([]);
   const [stats, setStats] = useState(null);
+  const [scoredStats, setScoredStats] = useState(null);
   const [progress, setProgress] = useState(null);
 
   useEffect(() => {
@@ -52,11 +53,13 @@ function App() {
       // StudyTab loads its own data
     } else if (activeTab === 'progress') {
       try {
-        const [statsData, progressData] = await Promise.all([
+        const [statsData, scoredData, progressData] = await Promise.all([
           getStudyStats(selectedDeckId),
+          getScoredStudyStats(),
           getProgress(selectedDeckId)
         ]);
         setStats(statsData);
+        setScoredStats(scoredData);
         setProgress(progressData);
       } catch (err) {
         console.error('Error loading stats:', err);
@@ -93,7 +96,7 @@ function App() {
       case 'ai-quiz':
         return <AIQuizTab deckId={selectedDeckId} />;
       case 'progress':
-        return <ProgressTab stats={stats} progress={progress} deckName={getSelectedDeckName()} />;
+        return <ProgressTab stats={stats} scoredStats={scoredStats} progress={progress} deckName={getSelectedDeckName()} />;
       default:
         return null;
     }

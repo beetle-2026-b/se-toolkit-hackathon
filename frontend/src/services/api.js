@@ -100,15 +100,15 @@ export async function getNextStudyCard(deckId = null) {
   return res.json();
 }
 
-export async function rateAnswer(cardId, isCorrect) {
-  const res = await fetch(`${API_URL}/api/study/rate`, {
+export async function scoreAnswer(cardId, userAnswer) {
+  const res = await fetch(`${API_URL}/api/study/score`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ card_id: cardId, is_correct: isCorrect })
+    body: JSON.stringify({ card_id: cardId, user_answer: userAnswer })
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.detail || 'Failed to rate answer');
+    throw new Error(error.detail || 'Failed to score answer');
   }
   return res.json();
 }
@@ -119,6 +119,12 @@ export async function getStudyStats(deckId = null) {
     : `${API_URL}/api/study/stats`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to load stats');
+  return res.json();
+}
+
+export async function getScoredStudyStats() {
+  const res = await fetch(`${API_URL}/api/study/scored-stats`);
+  if (!res.ok) throw new Error('Failed to load scored stats');
   return res.json();
 }
 

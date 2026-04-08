@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { getNextStudyCard, rateAnswer, generateHint } from '../services/api';
+import { getNextStudyCard, scoreAnswer, generateHint } from '../services/api';
 
-function StudyTab({ deckId, onRatingComplete }) {
+function StudyTab({ deckId }) {
   const [studyCard, setStudyCard] = useState(null);
   const [message, setMessage] = useState('');
-  const [revealed, setRevealed] = useState(false);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [result, setResult] = useState(null);
   const [hint, setHint] = useState('');
   const [loadingHint, setLoadingHint] = useState(false);
+  const [loadingScore, setLoadingScore] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -15,7 +17,8 @@ function StudyTab({ deckId, onRatingComplete }) {
 
   const loadNextCard = async () => {
     setError('');
-    setRevealed(false);
+    setResult(null);
+    setUserAnswer('');
     setHint('');
 
     try {
@@ -32,10 +35,6 @@ function StudyTab({ deckId, onRatingComplete }) {
     }
   };
 
-  const handleReveal = () => {
-    setRevealed(true);
-  };
-
   const handleGetHint = async () => {
     if (!studyCard) return;
     setLoadingHint(true);
@@ -43,21 +42,35 @@ function StudyTab({ deckId, onRatingComplete }) {
       const data = await generateHint(studyCard.question);
       setHint(data.hint);
     } catch (err) {
-      setHint('Unable to generate hint. Please try again.');
+      setHint('Unable to generate hint.');
     } finally {
       setLoadingHint(false);
     }
   };
 
-  const handleRate = async (isCorrect) => {
-    if (!studyCard) return;
-    try {
-      await rateAnswer(studyCard.id, isCorrect);
-      if (onRatingComplete) onRatingComplete();
-      loadNextCard();
-    } catch (err) {
-      setError('Failed to record rating. Please try again.');
+  const handleCheck = async () => {
+    if (!userAnswer.trim()) {
+      alert('Please type your answer before checking.');
+      return;
     }
+    if (!studyCard) return;
+
+    setLoadingScore(true);
+    setError('');
+    try {
+      const resultData = await scoreAnswer(studyCard.id, userAnswer);
+      setResult(resultData);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingScore(false);
+    }
+  };
+
+  const getScoreColor = (score) => {
+    if (score >= 8) return '#27ae60';
+    if (score >= 5) return '#f39c12';
+    return '#e74c3c';
   };
 
   return (
@@ -73,7 +86,7 @@ function StudyTab({ deckId, onRatingComplete }) {
             <div className="meta">
               Box: {studyCard.box} | {studyCard.mastery_level}
             </div>
-            {revealed && (
+            {result && (
               <div className="answer" id="study-answer">{studyCard.answer}</div>
             )}
           </>
@@ -84,35 +97,52 @@ function StudyTab({ deckId, onRatingComplete }) {
 
       {studyCard && (
         <div className="study-controls">
-          {!revealed ? (
+          {hint && <div className="hint-box">{hint}</div>}
+
+          {!result && (
             <>
-              {hint && <div className="hint-box">{hint}</div>}
+              <textarea
+                rows="3"
+                value={userAnswer}
+                onChange={(e) => setUserAnswer(e.target.value)}
+                placeholder="Type your answer here..."
+                className="quiz-answer-textarea"
+              />
               <button
                 className="btn-secondary"
                 onClick={handleGetHint}
                 disabled={loadingHint}
               >
-                {loadingHint ? 'Loading...' : 'Get Hint'}
+                {loadingHint ? 'Loading...' : 'Hint'}
               </button>
-              <button className="btn-primary" onClick={handleReveal}>
-                Reveal Answer
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="manual-rating">
-                <button className="btn-success" onClick={() => handleRate(true)}>
-                  Correct
-                </button>
-                <button className="btn-danger" onClick={() => handleRate(false)}>
-                  Incorrect
-                </button>
-              </div>
-              <button className="btn-primary" onClick={loadNextCard}>
-                Next Card
+              <button
+                className="btn-primary"
+                onClick={handleCheck}
+                disabled={loadingScore}
+              >
+                {loadingScore ? 'Checking...' : 'Check'}
               </button>
             </>
           )}
+
+          {result && (
+            <div className="score-result">
+              <div className="score-circle" style={{ borderColor: getScoreColor(result.score) }}>
+                <span className="score-number" style={{ color: getScoreColor(result.score) }}>
+                  {result.score}
+                </span>
+                <span className="score-total">/10</span>
+              </div>
+              <div className="score-label" style={{ color: getScoreColor(result.score) }}>
+                {result.label}
+              </div>
+              <div className="score-comment">{result.comment}</div>
+            </div>
+          )}
+
+          <button className="btn-primary" onClick={loadNextCard}>
+            Next
+          </button>
         </div>
       )}
     </div>

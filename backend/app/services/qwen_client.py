@@ -21,6 +21,12 @@ class EvaluationResult(BaseModel):
     feedback: str
 
 
+class ScoredEvaluation(BaseModel):
+    score: int  # 1-10
+    label: str  # "Correct", "Partially correct", "Incorrect"
+    comment: str  # brief explanation
+
+
 class QwenClient:
     def __init__(self):
         self.api_url = QWEN_API_URL
@@ -150,14 +156,13 @@ Return ONLY valid JSON in this exact format:
         prompt = f"""You are helping a student who is stuck on a flashcard question.
 
 Question: {question}
-{f"Student's attempt so far: {user_attempt}" if user_attempt else "The student has not attempted an answer yet."}
 
-Provide a short, helpful hint that guides them toward the answer without giving it away completely. Keep it to 1-2 sentences.
+Provide a short, helpful hint in exactly one sentence. Do NOT give the full answer — just a clue.
 
-Return ONLY the hint, with no additional text or formatting."""
+Return ONLY the hint, with no additional text."""
 
         response = await self._make_request([
-            {"role": "system", "content": "You are a helpful tutor that provides short hints for students."},
+            {"role": "system", "content": "You are a helpful tutor that provides one-sentence hints."},
             {"role": "user", "content": prompt}
         ])
 
@@ -165,6 +170,59 @@ Return ONLY the hint, with no additional text or formatting."""
             return "Unable to generate hint. Please try again."
 
         return response.strip()
+
+    async def score_answer(self, question: str, correct_answer: str, user_answer: str) -> ScoredEvaluation:
+        prompt = f"""You are scoring a student's answer on a scale from 1 to 10.
+
+Question: {question}
+Correct Answer: {correct_answer}
+Student's Answer: {user_answer}
+
+Score from 1 to 10:
+- 1-4: Incorrect (wrong or completely off)
+- 5-7: Partially correct (some right elements but incomplete or partially wrong)
+- 8-10: Correct (mostly or fully correct)
+
+Return ONLY valid JSON in this exact format:
+{{
+  "score": 6,
+  "label": "Partially correct",
+  "comment": "You mentioned X but missed Y."
+}}"""
+
+        response = await self._make_request([
+            {"role": "system", "content": "You are an educational assistant that scores answers from 1-10. Always return valid JSON."},
+            {"role": "user", "content": prompt}
+        ])
+
+        if not response:
+            return ScoredEvaluation(
+                score=0,
+                label="Unable to score",
+                comment="Could not evaluate answer."
+            )
+
+        try:
+            response = response.strip()
+            if response.startswith("```"):
+                response = response.split("```")[1]
+                if response.startswith("json"):
+                    response = response[4:]
+                response = response.strip()
+
+            data = json.loads(response)
+            return ScoredEvaluation(
+                score=int(data.get("score", 0)),
+                label=data.get("label", "Unknown"),
+                comment=data.get("comment", "")
+            )
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+            print(f"Failed to parse score response: {e}")
+            return ScoredEvaluation(
+                score=0,
+                label="Unable to score",
+                comment="Could not evaluate answer."
+            )
 
 
 qwen_client = QwenClient()
