@@ -5,6 +5,7 @@ function Navbar({ activeTab, onTabChange }) {
     { id: 'cards', label: 'My Cards' },
     { id: 'ai-generate', label: 'AI Generate' },
     { id: 'study', label: 'Study Mode' },
+    { id: 'ai-quiz', label: 'AI Quiz' },
     { id: 'progress', label: 'Progress' }
   ];
 

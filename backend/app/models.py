@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey, Float, Text
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -34,3 +34,17 @@ class StudySession(Base):
     answered_at = Column(DateTime(timezone=True), server_default=func.now())
     box_before = Column(Integer, nullable=True)
     box_after = Column(Integer, nullable=True)
+
+
+class AIStudySession(Base):
+    __tablename__ = "ai_study_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    card_id = Column(Integer, nullable=False)
+    question = Column(String, nullable=False)
+    correct_answer = Column(String, nullable=False)
+    user_answer = Column(Text, nullable=False)
+    is_correct = Column(Boolean, nullable=False)
+    confidence = Column(Float, nullable=False)
+    feedback = Column(Text, nullable=False)
+    answered_at = Column(DateTime(timezone=True), server_default=func.now())

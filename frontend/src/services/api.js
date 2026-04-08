@@ -173,3 +173,39 @@ export async function generateHint(question, userAttempt = '') {
   }
   return res.json();
 }
+
+// ============ AI QUIZ MODE ============
+
+export async function getNextQuizCard(deckId = null) {
+  const url = deckId !== null
+    ? `${API_URL}/api/ai-quiz/next?deck_id=${deckId}`
+    : `${API_URL}/api/ai-quiz/next`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to load next quiz card');
+  return res.json();
+}
+
+export async function checkQuizAnswer(cardId, userAnswer) {
+  const res = await fetch(`${API_URL}/api/ai-quiz/check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ card_id: cardId, user_answer: userAnswer })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to check answer');
+  }
+  return res.json();
+}
+
+export async function getQuizStats() {
+  const res = await fetch(`${API_URL}/api/ai-quiz/stats`);
+  if (!res.ok) throw new Error('Failed to load quiz stats');
+  return res.json();
+}
+
+export async function getQuizHistory(limit = 20) {
+  const res = await fetch(`${API_URL}/api/ai-quiz/history?limit=${limit}`);
+  if (!res.ok) throw new Error('Failed to load quiz history');
+  return res.json();
+}

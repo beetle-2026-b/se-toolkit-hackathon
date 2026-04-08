@@ -4,6 +4,7 @@ import DeckSelector from './components/DeckSelector';
 import CardsTab from './components/CardsTab';
 import AIGenerateTab from './components/AIGenerateTab';
 import StudyTab from './components/StudyTab';
+import AIQuizTab from './components/AIQuizTab';
 import ProgressTab from './components/ProgressTab';
 import { getCards, getDecks, getStudyStats, getProgress } from './services/api';
 
@@ -89,6 +90,8 @@ function App() {
         return <AIGenerateTab setCards={setCards} />;
       case 'study':
         return <StudyTab deckId={selectedDeckId} onRatingComplete={loadDataForTab} />;
+      case 'ai-quiz':
+        return <AIQuizTab deckId={selectedDeckId} />;
       case 'progress':
         return <ProgressTab stats={stats} progress={progress} deckName={getSelectedDeckName()} />;
       default:
