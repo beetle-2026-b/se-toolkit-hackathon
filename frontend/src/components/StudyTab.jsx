@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { getNextStudyCard, rateAnswer, evaluateAnswer, generateHint } from '../services/api';
+import { getNextStudyCard, rateAnswer, generateHint } from '../services/api';
 
 function StudyTab({ deckId, onRatingComplete }) {
   const [studyCard, setStudyCard] = useState(null);
   const [message, setMessage] = useState('');
   const [revealed, setRevealed] = useState(false);
-  const [userAnswer, setUserAnswer] = useState('');
-  const [aiFeedback, setAiFeedback] = useState('');
   const [hint, setHint] = useState('');
   const [loadingHint, setLoadingHint] = useState(false);
-  const [loadingEvaluation, setLoadingEvaluation] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -19,8 +16,6 @@ function StudyTab({ deckId, onRatingComplete }) {
   const loadNextCard = async () => {
     setError('');
     setRevealed(false);
-    setUserAnswer('');
-    setAiFeedback('');
     setHint('');
 
     try {
@@ -45,35 +40,12 @@ function StudyTab({ deckId, onRatingComplete }) {
     if (!studyCard) return;
     setLoadingHint(true);
     try {
-      const data = await generateHint(studyCard.question, userAnswer);
+      const data = await generateHint(studyCard.question);
       setHint(data.hint);
     } catch (err) {
       setHint('Unable to generate hint. Please try again.');
     } finally {
       setLoadingHint(false);
-    }
-  };
-
-  const handleEvaluate = async () => {
-    if (!userAnswer.trim()) {
-      alert('Please type your answer first.');
-      return;
-    }
-    if (!studyCard) return;
-
-    setLoadingEvaluation(true);
-    try {
-      const data = await evaluateAnswer(
-        studyCard.question,
-        studyCard.answer,
-        userAnswer
-      );
-      const feedbackText = `Result: ${data.is_correct ? '✓ Correct' : '✗ Incorrect'} (Confidence: ${Math.round(data.confidence * 100)}%)\nFeedback: ${data.feedback}`;
-      setAiFeedback(feedbackText);
-    } catch (err) {
-      setAiFeedback('Unable to evaluate answer. Please try again.');
-    } finally {
-      setLoadingEvaluation(false);
     }
   };
 
@@ -113,10 +85,6 @@ function StudyTab({ deckId, onRatingComplete }) {
       {studyCard && (
         <div className="study-controls">
           {!revealed ? (
-            <button className="btn-primary" onClick={handleReveal}>
-              Reveal Answer
-            </button>
-          ) : (
             <>
               {hint && <div className="hint-box">{hint}</div>}
               <button
@@ -126,26 +94,12 @@ function StudyTab({ deckId, onRatingComplete }) {
               >
                 {loadingHint ? 'Loading...' : 'Get Hint'}
               </button>
-
-              <div className="answer-evaluation">
-                <textarea
-                  rows="2"
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  placeholder="Type your answer here (optional)..."
-                />
-                <button
-                  className="btn-secondary"
-                  onClick={handleEvaluate}
-                  disabled={loadingEvaluation}
-                >
-                  {loadingEvaluation ? 'Evaluating...' : 'AI Evaluate'}
-                </button>
-                {aiFeedback && (
-                  <div className="ai-feedback">{aiFeedback}</div>
-                )}
-              </div>
-
+              <button className="btn-primary" onClick={handleReveal}>
+                Reveal Answer
+              </button>
+            </>
+          ) : (
+            <>
               <div className="manual-rating">
                 <button className="btn-success" onClick={() => handleRate(true)}>
                   Correct
@@ -154,7 +108,6 @@ function StudyTab({ deckId, onRatingComplete }) {
                   Incorrect
                 </button>
               </div>
-
               <button className="btn-primary" onClick={loadNextCard}>
                 Next Card
               </button>
