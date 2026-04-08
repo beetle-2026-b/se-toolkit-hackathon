@@ -172,34 +172,54 @@ Return ONLY the hint, with no additional text."""
         return response.strip()
 
     async def score_answer(self, question: str, correct_answer: str, user_answer: str) -> ScoredEvaluation:
-        prompt = f"""You are scoring a student's answer on a scale from 1 to 10.
+        prompt = f"""You are scoring a student's answer. Here are the EXACT details:
 
-Question: {question}
-Correct Answer: {correct_answer}
-Student's Answer: {user_answer}
+=== QUESTION ===
+{question}
 
-Score from 1 to 10:
-- 1-4: Incorrect (wrong or completely off)
-- 5-7: Partially correct (some right elements but incomplete or partially wrong)
-- 8-10: Correct (mostly or fully correct)
+=== REFERENCE ANSWER (the correct answer) ===
+{correct_answer}
 
-Return ONLY valid JSON in this exact format:
+=== STUDENT'S ANSWER (what the student typed) ===
+{user_answer}
+
+=== EVALUATION RULES ===
+
+Step 1 - Semantic meaning check: Does the student's answer mean the same thing as the reference answer? Consider:
+- Synonyms, abbreviations, nicknames, acronyms (e.g., "cavs" = "Cavaliers" = "Cleveland Cavaliers")
+- Different phrasings of the same fact (e.g., "rate of change" = "derivative")
+- Common names vs formal names (e.g., "WW2" = "World War II")
+- Shortened versions (e.g., "React" = "a JavaScript library for building user interfaces")
+
+Step 2 - Fact-check: Using your knowledge, is the student's answer factually correct for THIS question?
+
+Step 3 - Score:
+- **10**: Perfect — exactly correct, same meaning as reference
+- **8-9**: Correct — clearly right, may use different words but means the same thing
+- **6-7**: Partially correct — has some right elements but incomplete
+- **4-5**: Mostly wrong — mostly incorrect but has a small correct element
+- **1-3**: Completely wrong — entirely incorrect
+- **0**: No real answer (e.g., "I don't know", "idk")
+
+CRITICAL: Score based on whether the student's answer is FACTUALLY CORRECT for the question. Do NOT give low scores just because wording differs from the reference.
+
+Return ONLY valid JSON:
 {{
-  "score": 6,
-  "label": "Partially correct",
-  "comment": "You mentioned X but missed Y."
+  "score": 8,
+  "label": "Correct",
+  "comment": "Brief explanation."
 }}"""
 
         response = await self._make_request([
-            {"role": "system", "content": "You are an educational assistant that scores answers from 1-10. Always return valid JSON."},
+            {"role": "system", "content": "You score student answers 1-10. You recognize synonyms, abbreviations, nicknames, and equivalent terms. You check if the student's answer is factually correct for the given question. Always return valid JSON."},
             {"role": "user", "content": prompt}
         ])
 
         if not response:
             return ScoredEvaluation(
                 score=0,
-                label="Unable to score",
-                comment="Could not evaluate answer."
+                label="Evaluation failed",
+                comment="AI service unavailable. Please try again."
             )
 
         try:
@@ -211,18 +231,47 @@ Return ONLY valid JSON in this exact format:
                 response = response.strip()
 
             data = json.loads(response)
+            score = int(data.get("score", 0))
+            label = data.get("label", "")
+            comment = data.get("comment", "")
+
+            # Ensure score is in valid range
+            if score < 1 or score > 10:
+                return ScoredEvaluation(
+                    score=0,
+                    label="Evaluation failed",
+                    comment="Could not evaluate answer. Please try again."
+                )
+
             return ScoredEvaluation(
-                score=int(data.get("score", 0)),
-                label=data.get("label", "Unknown"),
-                comment=data.get("comment", "")
+                score=score,
+                label=label,
+                comment=comment
             )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
             print(f"Failed to parse score response: {e}")
             return ScoredEvaluation(
                 score=0,
-                label="Unable to score",
-                comment="Could not evaluate answer."
+                label="Evaluation failed",
+                comment="Could not evaluate answer. Please try again."
             )
+
+    async def generate_answer(self, question: str) -> str:
+        prompt = f"""Generate a concise, factual answer to this question. Keep it short (1-2 sentences max). Be direct and clear.
+
+Question: {question}
+
+Return ONLY the answer, with no additional text, quotes, or formatting."""
+
+        response = await self._make_request([
+            {"role": "system", "content": "You are a knowledge assistant that provides short, direct answers to questions. Always return only the answer text."},
+            {"role": "user", "content": prompt}
+        ])
+
+        if not response:
+            return ""
+
+        return response.strip()
 
 
 qwen_client = QwenClient()

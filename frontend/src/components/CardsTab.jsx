@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getCards, createCard, updateCard, deleteCard } from '../services/api';
+import { getCards, createCard, updateCard, deleteCard, generateAnswer } from '../services/api';
 
 function CardsTab({ cards, setCards, decks, selectedDeckId }) {
   const [question, setQuestion] = useState('');
@@ -7,6 +7,24 @@ function CardsTab({ cards, setCards, decks, selectedDeckId }) {
   const [deckId, setDeckId] = useState(selectedDeckId || '');
   const [editingCardId, setEditingCardId] = useState(null);
   const [error, setError] = useState('');
+  const [generatingAnswer, setGeneratingAnswer] = useState(false);
+
+  const handleGenerateAnswer = async () => {
+    if (!question.trim()) {
+      alert('Please type a question first.');
+      return;
+    }
+    setGeneratingAnswer(true);
+    setError('');
+    try {
+      const data = await generateAnswer(question);
+      setAnswer(data.answer);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGeneratingAnswer(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,14 +102,24 @@ function CardsTab({ cards, setCards, decks, selectedDeckId }) {
           </div>
           <div className="form-group">
             <label htmlFor="answer">Answer</label>
-            <textarea
-              id="answer"
-              rows="3"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              required
-              placeholder="Enter the answer..."
-            />
+            <div className="answer-field">
+              <textarea
+                id="answer"
+                rows="3"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                required
+                placeholder="Enter the answer or generate it with AI..."
+              />
+              <button
+                type="button"
+                className="btn-ai-generate"
+                onClick={handleGenerateAnswer}
+                disabled={generatingAnswer}
+              >
+                {generatingAnswer ? 'Generating...' : '✨ Generate Answer'}
+              </button>
+            </div>
           </div>
           <div className="form-group">
             <label htmlFor="deck-select">Deck</label>

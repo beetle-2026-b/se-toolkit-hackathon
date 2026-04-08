@@ -73,7 +73,28 @@ async def evaluate_answer(request: EvaluateAnswerRequest):
 async def generate_hint(request: GenerateHintRequest):
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="Question is required")
-    
+
     hint = await qwen_client.generate_hint(request.question, request.user_attempt)
-    
+
     return GenerateHintResponse(hint=hint)
+
+
+class GenerateAnswerRequest(BaseModel):
+    question: str
+
+
+class GenerateAnswerResponse(BaseModel):
+    answer: str
+
+
+@router.post("/generate-answer", response_model=GenerateAnswerResponse)
+async def generate_answer(request: GenerateAnswerRequest):
+    if not request.question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+
+    answer = await qwen_client.generate_answer(request.question)
+
+    if not answer:
+        raise HTTPException(status_code=500, detail="Failed to generate answer. Please check the AI service.")
+
+    return GenerateAnswerResponse(answer=answer)

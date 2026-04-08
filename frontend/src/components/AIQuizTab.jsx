@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { getNextQuizCard, checkQuizAnswer, getQuizStats, getQuizHistory } from '../services/api';
+import React, { useState } from 'react';
+import { checkQuizAnswer } from '../services/api';
 
 function AIQuizTab({ decks }) {
   const [deckId, setDeckId] = useState(null);
-  const [phase, setPhase] = useState('select'); // 'select' | 'quiz' | 'done'
+  const [phase, setPhase] = useState('select');
   const [quizCards, setQuizCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
@@ -11,8 +11,6 @@ function AIQuizTab({ decks }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sessionStats, setSessionStats] = useState({ correct: 0, partial: 0, incorrect: 0, totalScore: 0, count: 0 });
-  const [history, setHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
 
   const startSession = (id) => {
     if (!id) return;
@@ -23,8 +21,6 @@ function AIQuizTab({ decks }) {
     setUserAnswer('');
     setError('');
     setSessionStats({ correct: 0, partial: 0, incorrect: 0, totalScore: 0, count: 0 });
-    setHistory([]);
-    setShowHistory(false);
 
     fetch(`/api/cards?deck_id=${id}`)
       .then(r => r.json())
@@ -32,17 +28,6 @@ function AIQuizTab({ decks }) {
         const shuffled = [...cards].sort(() => Math.random() - 0.5);
         setQuizCards(shuffled);
       });
-  };
-
-  const loadNextCard = () => {
-    if (currentIndex + 1 >= quizCards.length) {
-      setPhase('done');
-    } else {
-      setCurrentIndex(prev => prev + 1);
-      setResult(null);
-      setUserAnswer('');
-      setError('');
-    }
   };
 
   const handleCheck = async () => {
@@ -57,9 +42,16 @@ function AIQuizTab({ decks }) {
     try {
       const card = quizCards[currentIndex];
       const resultData = await checkQuizAnswer(card.id, userAnswer);
+
+      // Check if AI failed to evaluate
+      if (resultData.score === 0) {
+        setError('AI could not evaluate your answer. Please try again.');
+        setLoading(false);
+        return;
+      }
+
       setResult(resultData);
 
-      // Update session stats based on score
       setSessionStats(prev => {
         let category;
         if (resultData.score >= 8) category = 'correct';
@@ -73,23 +65,22 @@ function AIQuizTab({ decks }) {
           count: prev.count + 1
         };
       });
-
-      // Add to session history
-      setHistory(prev => [...prev, {
-        question: card.question,
-        correctAnswer: card.answer,
-        userAnswer,
-        ...resultData
-      }]);
     } catch (err) {
-      setError(err.message);
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleNext = () => {
-    loadNextCard();
+    if (currentIndex + 1 >= quizCards.length) {
+      setPhase('done');
+    } else {
+      setCurrentIndex(prev => prev + 1);
+      setResult(null);
+      setUserAnswer('');
+      setError('');
+    }
   };
 
   const handleFinish = () => {
@@ -106,7 +97,9 @@ function AIQuizTab({ decks }) {
     ? Math.round(sessionStats.totalScore / sessionStats.count * 10) / 10
     : 0;
 
-  // Theme selection screen
+  const currentCard = quizCards[currentIndex];
+
+  // Theme selection
   if (phase === 'select') {
     return (
       <div className="ai-quiz-container">
@@ -164,25 +157,16 @@ function AIQuizTab({ decks }) {
             </div>
           </div>
           <div className="completion-actions">
-            <button className="btn-primary" onClick={() => startSession(deckId)}>
-              Quiz This Theme Again
-            </button>
-            <button className="btn-secondary" onClick={handleFinish}>
-              Choose Different Theme
-            </button>
+            <button className="btn-primary" onClick={() => startSession(deckId)}>Quiz Again</button>
+            <button className="btn-secondary" onClick={handleFinish}>Choose Theme</button>
           </div>
         </div>
       </div>
     );
   }
 
-  const currentCard = quizCards[currentIndex];
   if (!currentCard) {
-    return (
-      <div className="ai-quiz-container">
-        <p className="placeholder-text">Loading...</p>
-      </div>
-    );
+    return <div className="ai-quiz-container"><p className="placeholder-text">Loading...</p></div>;
   }
 
   return (
@@ -228,51 +212,40 @@ function AIQuizTab({ decks }) {
               </div>
               <div className="score-comment">{result.comment}</div>
             </div>
-            <button className="btn-primary" onClick={handleNext}>
-              Next
-            </button>
+            <button className="btn-primary" onClick={handleNext}>Next</button>
           </>
         )}
       </div>
 
-      {/* Live Stats Below */}
+      {/* Live Stats */}
       {sessionStats.count > 0 && (
         <div className="live-stats">
           <h3>Session Stats</h3>
           <div className="live-stats-grid">
             <div className="live-stat correct">
-              <span className="live-stat-label">Average Score</span>
+              <span className="live-stat-label">Avg Score</span>
               <span className="live-stat-count">{avgScore} / 10</span>
             </div>
             <div className="live-stat correct">
-              <span className="live-stat-label">Correct (8-10)</span>
+              <span className="live-stat-label">Correct</span>
               <span className="live-stat-count">{sessionStats.correct}</span>
               <span className="live-stat-pct">{getPercentage(sessionStats.correct)}%</span>
             </div>
             <div className="live-stat partial">
-              <span className="live-stat-label">Partial (5-7)</span>
+              <span className="live-stat-label">Partial</span>
               <span className="live-stat-count">{sessionStats.partial}</span>
               <span className="live-stat-pct">{getPercentage(sessionStats.partial)}%</span>
             </div>
             <div className="live-stat incorrect">
-              <span className="live-stat-label">Incorrect (1-4)</span>
+              <span className="live-stat-label">Incorrect</span>
               <span className="live-stat-count">{sessionStats.incorrect}</span>
               <span className="live-stat-pct">{getPercentage(sessionStats.incorrect)}%</span>
             </div>
           </div>
           <div className="live-stats-bar">
-            <div
-              className="live-stat-bar-segment correct"
-              style={{ width: `${getPercentage(sessionStats.correct)}%` }}
-            />
-            <div
-              className="live-stat-bar-segment partial"
-              style={{ width: `${getPercentage(sessionStats.partial)}%` }}
-            />
-            <div
-              className="live-stat-bar-segment incorrect"
-              style={{ width: `${getPercentage(sessionStats.incorrect)}%` }}
-            />
+            <div className="live-stat-bar-segment correct" style={{ width: `${getPercentage(sessionStats.correct)}%` }} />
+            <div className="live-stat-bar-segment partial" style={{ width: `${getPercentage(sessionStats.partial)}%` }} />
+            <div className="live-stat-bar-segment incorrect" style={{ width: `${getPercentage(sessionStats.incorrect)}%` }} />
           </div>
         </div>
       )}

@@ -163,6 +163,19 @@ export async function generateCardsFromText(text) {
   return res.json();
 }
 
+export async function generateAnswer(question) {
+  const res = await fetch(`${API_URL}/api/generate-answer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to generate answer');
+  }
+  return res.json();
+}
+
 export async function evaluateAnswer(question, correctAnswer, userAnswer) {
   const res = await fetch(`${API_URL}/api/evaluate-answer`, {
     method: 'POST',

@@ -13,7 +13,8 @@
       "Bash(sleep *)",
       "Bash(docker volume *)",
       "Bash(rm *)",
-      "Bash(docker compose exec *)"
+      "Bash(docker compose exec *)",
+      "Bash(python3 *)"
     ]
   },
   "$version": 3

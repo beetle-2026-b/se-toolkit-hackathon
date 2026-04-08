@@ -6,6 +6,7 @@ from datetime import datetime, date
 from app.database import get_db
 from app.models import Card, StudySession
 from app.services.spaced_repetition import calculate_next_review, get_box_info, get_mastery_level
+from app.services.qwen_client import qwen_client
 
 router = APIRouter()
 
@@ -18,6 +19,17 @@ class SelfRateRequest(BaseModel):
 class SelfRateResponse(BaseModel):
     card_id: int
     rating: str
+
+
+class ScoreAnswerRequest(BaseModel):
+    card_id: int
+    user_answer: str
+
+
+class ScoreAnswerResponse(BaseModel):
+    score: int
+    label: str
+    comment: str
 
 
 class StudyStats(BaseModel):
@@ -100,6 +112,28 @@ def self_rate_answer(request: SelfRateRequest, db: Session = Depends(get_db)):
     db.commit()
 
     return SelfRateResponse(card_id=card.id, rating=request.rating)
+
+
+@router.post("/study/score", response_model=ScoreAnswerResponse)
+async def score_answer(request: ScoreAnswerRequest, db: Session = Depends(get_db)):
+    if not request.user_answer.strip():
+        raise HTTPException(status_code=400, detail="Answer cannot be empty")
+
+    card = db.query(Card).filter(Card.id == request.card_id).first()
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    result = await qwen_client.score_answer(
+        card.question,
+        card.answer,
+        request.user_answer
+    )
+
+    return ScoreAnswerResponse(
+        score=result.score,
+        label=result.label,
+        comment=result.comment
+    )
 
 
 @router.get("/study/stats", response_model=StudyStats)
