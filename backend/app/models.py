@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey
 from sqlalchemy.sql import func
-from database import Base
+from app.database import Base
 
 
 class Card(Base):

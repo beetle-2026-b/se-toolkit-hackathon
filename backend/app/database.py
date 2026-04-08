@@ -1,11 +1,13 @@
 import os
+import pathlib
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_PATH = os.getenv("DATABASE_PATH", "./data/flashcards.db")
+DATABASE_PATH = os.getenv("DATABASE_PATH", "/app/app/data/flashcards.db")
 
-os.makedirs(os.path.dirname(DATABASE_PATH) if os.path.dirname(DATABASE_PATH) else ".", exist_ok=True)
+db_path = pathlib.Path(DATABASE_PATH)
+db_path.parent.mkdir(parents=True, exist_ok=True)
 
 engine = create_engine(f"sqlite:///{DATABASE_PATH}", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

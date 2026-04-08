@@ -3,9 +3,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, date
-from database import get_db
-from models import Card, StudySession
-from services.spaced_repetition import calculate_next_review, get_box_info, get_mastery_level
+from app.database import get_db
+from app.models import Card, StudySession
+from app.services.spaced_repetition import calculate_next_review, get_box_info, get_mastery_level
 
 router = APIRouter()
 
@@ -25,19 +25,19 @@ class StudyStats(BaseModel):
 @router.get("/study/next")
 def get_next_card(db: Session = Depends(get_db)):
     today = date.today()
-
+    
     due_cards = db.query(Card).filter(
         Card.next_review_date == None
     ).all()
-
+    
     if not due_cards:
         due_cards = db.query(Card).filter(
             Card.next_review_date <= today
         ).all()
-
+    
     if not due_cards:
         return {"message": "No cards due for review"}
-
+    
     card = due_cards[0]
     return {
         "id": card.id,
@@ -55,14 +55,14 @@ def rate_answer(rating: RateAnswer, db: Session = Depends(get_db)):
     card = db.query(Card).filter(Card.id == rating.card_id).first()
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
-
+    
     box_before = card.box
     new_box, next_review = calculate_next_review(card.box, rating.is_correct)
-
+    
     card.box = new_box
     card.next_review_date = next_review
     card.last_reviewed = datetime.now()
-
+    
     session = StudySession(
         card_id=card.id,
         is_correct=rating.is_correct,
@@ -71,7 +71,7 @@ def rate_answer(rating: RateAnswer, db: Session = Depends(get_db)):
     )
     db.add(session)
     db.commit()
-
+    
     return {
         "card_id": card.id,
         "box_before": box_before,
@@ -84,17 +84,17 @@ def rate_answer(rating: RateAnswer, db: Session = Depends(get_db)):
 @router.get("/study/stats", response_model=StudyStats)
 def get_study_stats(db: Session = Depends(get_db)):
     total_cards = db.query(Card).count()
-
+    
     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-
+    
     today_sessions = db.query(StudySession).filter(
         StudySession.answered_at >= today_start
     ).all()
-
+    
     studied_today = len(today_sessions)
     correct_today = sum(1 for s in today_sessions if s.is_correct)
     incorrect_today = studied_today - correct_today
-
+    
     return StudyStats(
         total_cards=total_cards,
         studied_today=studied_today,

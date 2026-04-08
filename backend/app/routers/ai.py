@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-from services.qwen_client import qwen_client
+from app.services.qwen_client import qwen_client
 
 router = APIRouter()
 

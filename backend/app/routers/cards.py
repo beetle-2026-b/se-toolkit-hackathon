@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from database import get_db
-from models import Card
+from datetime import datetime
+from app.database import get_db
+from app.models import Card
 
 router = APIRouter()
 
@@ -29,6 +30,15 @@ class CardResponse(BaseModel):
     next_review_date: Optional[str]
     created_at: Optional[str]
     last_reviewed: Optional[str]
+
+    @field_validator("next_review_date", "created_at", "last_reviewed", mode="before")
+    @classmethod
+    def convert_datetime(cls, v):
+        if isinstance(v, datetime):
+            return v.isoformat()
+        if isinstance(v, str):
+            return v
+        return None
 
     class Config:
         from_attributes = True

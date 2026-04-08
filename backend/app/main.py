@@ -1,9 +1,15 @@
 import os
+import pathlib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from database import engine, Base
+from fastapi.responses import FileResponse
+from app.database import engine, Base
 
+# Import models BEFORE creating tables (they register with Base)
+from app.models import Card, StudySession, Deck
+
+# Now create tables with all models registered
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Smart Flashcards with AI", version="1.0.0")
@@ -23,9 +29,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+frontend_dir = pathlib.Path(__file__).parent.parent / "frontend" / "dist"
 
-from routers import cards, study, ai
+if frontend_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(frontend_dir / "assets")), name="assets")
+
+from app.routers import cards, study, ai
 
 app.include_router(cards.router, prefix="/api", tags=["cards"])
 app.include_router(study.router, prefix="/api", tags=["study"])
@@ -33,9 +42,12 @@ app.include_router(ai.router, prefix="/api", tags=["ai"])
 
 
 @app.get("/")
+@app.get("/api/{path:path}")
 async def serve_frontend():
-    from fastapi.responses import FileResponse
-    return FileResponse("../frontend/index.html")
+    index_file = frontend_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    return {"status": "Backend is running. Frontend not built."}
 
 
 @app.get("/health")
