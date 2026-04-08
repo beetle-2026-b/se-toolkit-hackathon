@@ -938,3 +938,199 @@ header h1 {
   color: #999;
   font-size: 0.75rem;
 }
+
+/* Study Mode Redesigned */
+.study-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.study-progress {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.theme-selection {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.theme-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background: white;
+  border: 2px solid #e0e6ed;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-btn:hover {
+  border-color: #3498db;
+  background: #f0f8ff;
+}
+
+.theme-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.theme-count {
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.completion-screen {
+  text-align: center;
+  padding: 20px;
+}
+
+.completion-screen h2 {
+  color: #27ae60;
+  margin-bottom: 12px;
+}
+
+.completion-text {
+  color: #666;
+  font-size: 1.1rem;
+  margin-bottom: 24px;
+}
+
+.session-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.session-stat {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.session-stat h3 {
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.session-stat p {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.session-stat span {
+  font-size: 0.9rem;
+  color: #999;
+}
+
+.session-stat.correct { border-top: 3px solid #27ae60; }
+.session-stat.correct h3 { color: #27ae60; }
+.session-stat.partial { border-top: 3px solid #f39c12; }
+.session-stat.partial h3 { color: #f39c12; }
+.session-stat.incorrect { border-top: 3px solid #e74c3c; }
+.session-stat.incorrect h3 { color: #e74c3c; }
+
+.completion-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* Live Stats */
+.live-stats {
+  margin-top: 24px;
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.live-stats h3 {
+  margin-bottom: 12px;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.live-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.live-stat {
+  text-align: center;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.live-stat.correct { background: #e8f5e9; }
+.live-stat.partial { background: #fff3e0; }
+.live-stat.incorrect { background: #ffebee; }
+
+.live-stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.live-stat-count {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.live-stat.correct .live-stat-count { color: #27ae60; }
+.live-stat.partial .live-stat-count { color: #f39c12; }
+.live-stat.incorrect .live-stat-count { color: #e74c3c; }
+
+.live-stat-pct {
+  display: block;
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.live-stats-bar {
+  height: 12px;
+  background: #e0e6ed;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+}
+
+.live-stat-bar-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.live-stat-bar-segment.correct { background: #27ae60; }
+.live-stat-bar-segment.partial { background: #f39c12; }
+.live-stat-bar-segment.incorrect { background: #e74c3c; }
+
+.btn-warning {
+  background: #f39c12;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s ease;
+}
+
+.btn-warning:hover {
+  background: #e67e22;
+}

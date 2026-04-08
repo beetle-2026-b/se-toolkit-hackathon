@@ -92,7 +92,7 @@ function App() {
       case 'ai-generate':
         return <AIGenerateTab setCards={setCards} />;
       case 'study':
-        return <StudyTab deckId={selectedDeckId} onRatingComplete={loadDataForTab} />;
+        return <StudyTab decks={decks} selectedDeckId={selectedDeckId} />;
       case 'ai-quiz':
         return <AIQuizTab deckId={selectedDeckId} />;
       case 'progress':

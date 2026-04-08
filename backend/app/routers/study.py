@@ -6,25 +6,18 @@ from datetime import datetime, date
 from app.database import get_db
 from app.models import Card, StudySession
 from app.services.spaced_repetition import calculate_next_review, get_box_info, get_mastery_level
-from app.services.qwen_client import qwen_client
 
 router = APIRouter()
 
 
-class RateAnswer(BaseModel):
+class SelfRateRequest(BaseModel):
     card_id: int
-    is_correct: bool
+    rating: str  # "correct", "partial", "incorrect"
 
 
-class ScoreAnswerRequest(BaseModel):
+class SelfRateResponse(BaseModel):
     card_id: int
-    user_answer: str
-
-
-class ScoreAnswerResponse(BaseModel):
-    score: int
-    label: str
-    comment: str
+    rating: str
 
 
 class StudyStats(BaseModel):
@@ -40,6 +33,16 @@ class ScoredStudyStats(BaseModel):
     partial_count: int
     incorrect_count: int
     average_score: float
+
+
+class SessionStats(BaseModel):
+    total: int
+    correct: int
+    partial: int
+    incorrect: int
+    correct_pct: float
+    partial_pct: float
+    incorrect_pct: float
 
 
 @router.get("/study/next")
@@ -70,54 +73,16 @@ def get_next_card(db: Session = Depends(get_db), deck_id: Optional[int] = None):
     }
 
 
-@router.post("/study/rate")
-def rate_answer(rating: RateAnswer, db: Session = Depends(get_db)):
-    card = db.query(Card).filter(Card.id == rating.card_id).first()
-    if not card:
-        raise HTTPException(status_code=404, detail="Card not found")
-
-    box_before = card.box
-    new_box, next_review = calculate_next_review(card.box, rating.is_correct)
-
-    card.box = new_box
-    card.next_review_date = next_review
-    card.last_reviewed = datetime.now()
-
-    session = StudySession(
-        card_id=card.id,
-        is_correct=rating.is_correct,
-        box_before=box_before,
-        box_after=new_box
-    )
-    db.add(session)
-    db.commit()
-
-    return {
-        "card_id": card.id,
-        "box_before": box_before,
-        "box_after": new_box,
-        "mastery_level": get_mastery_level(new_box),
-        "next_review": next_review.isoformat()
-    }
-
-
-@router.post("/study/score", response_model=ScoreAnswerResponse)
-async def score_answer(request: ScoreAnswerRequest, db: Session = Depends(get_db)):
-    if not request.user_answer.strip():
-        raise HTTPException(status_code=400, detail="Answer cannot be empty")
+@router.post("/study/self-rate", response_model=SelfRateResponse)
+def self_rate_answer(request: SelfRateRequest, db: Session = Depends(get_db)):
+    if request.rating not in ("correct", "partial", "incorrect"):
+        raise HTTPException(status_code=400, detail="Rating must be correct, partial, or incorrect")
 
     card = db.query(Card).filter(Card.id == request.card_id).first()
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
 
-    result = await qwen_client.score_answer(
-        card.question,
-        card.answer,
-        request.user_answer
-    )
-
-    # Map score to is_correct for Leitner
-    is_correct = result.score >= 8
+    is_correct = request.rating in ("correct", "partial")
     box_before = card.box
     new_box, next_review = calculate_next_review(card.box, is_correct)
 
@@ -134,11 +99,7 @@ async def score_answer(request: ScoreAnswerRequest, db: Session = Depends(get_db
     db.add(session)
     db.commit()
 
-    return ScoreAnswerResponse(
-        score=result.score,
-        label=result.label,
-        comment=result.comment
-    )
+    return SelfRateResponse(card_id=card.id, rating=request.rating)
 
 
 @router.get("/study/stats", response_model=StudyStats)
@@ -190,7 +151,6 @@ def get_scored_study_stats(db: Session = Depends(get_db)):
     incorrect_count = 0
 
     for s in sessions:
-        # Map box transitions to approximate scores
         if s.box_after >= 4:
             score = 9
             correct_count += 1
