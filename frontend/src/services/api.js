@@ -1,7 +1,56 @@
 const API_URL = '';
 
-export async function getCards() {
-  const res = await fetch(`${API_URL}/api/cards`);
+// ============ DECKS ============
+
+export async function getDecks() {
+  const res = await fetch(`${API_URL}/api/decks`);
+  if (!res.ok) throw new Error('Failed to load decks');
+  return res.json();
+}
+
+export async function createDeck(name) {
+  const res = await fetch(`${API_URL}/api/decks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to create deck');
+  }
+  return res.json();
+}
+
+export async function updateDeck(deckId, name) {
+  const res = await fetch(`${API_URL}/api/decks/${deckId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to update deck');
+  }
+  return res.json();
+}
+
+export async function deleteDeck(deckId) {
+  const res = await fetch(`${API_URL}/api/decks/${deckId}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to delete deck');
+  }
+}
+
+// ============ CARDS ============
+
+export async function getCards(deckId = null) {
+  const url = deckId !== null
+    ? `${API_URL}/api/cards?deck_id=${deckId}`
+    : `${API_URL}/api/cards`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to load cards');
   return res.json();
 }
@@ -42,8 +91,11 @@ export async function deleteCard(cardId) {
   }
 }
 
-export async function getNextStudyCard() {
-  const res = await fetch(`${API_URL}/api/study/next`);
+export async function getNextStudyCard(deckId = null) {
+  const url = deckId !== null
+    ? `${API_URL}/api/study/next?deck_id=${deckId}`
+    : `${API_URL}/api/study/next`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to load next card');
   return res.json();
 }
@@ -61,14 +113,20 @@ export async function rateAnswer(cardId, isCorrect) {
   return res.json();
 }
 
-export async function getStudyStats() {
-  const res = await fetch(`${API_URL}/api/study/stats`);
+export async function getStudyStats(deckId = null) {
+  const url = deckId !== null
+    ? `${API_URL}/api/study/stats?deck_id=${deckId}`
+    : `${API_URL}/api/study/stats`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to load stats');
   return res.json();
 }
 
-export async function getProgress() {
-  const res = await fetch(`${API_URL}/api/study/progress`);
+export async function getProgress(deckId = null) {
+  const url = deckId !== null
+    ? `${API_URL}/api/study/progress?deck_id=${deckId}`
+    : `${API_URL}/api/study/progress`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to load progress');
   return res.json();
 }

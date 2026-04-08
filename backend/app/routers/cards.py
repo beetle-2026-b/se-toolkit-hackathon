@@ -61,8 +61,11 @@ def create_card(card: CardCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/cards", response_model=List[CardResponse])
-def get_cards(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    cards = db.query(Card).offset(skip).limit(limit).all()
+def get_cards(skip: int = 0, limit: int = 100, deck_id: Optional[int] = None, db: Session = Depends(get_db)):
+    query = db.query(Card)
+    if deck_id is not None:
+        query = query.filter(Card.deck_id == deck_id)
+    cards = query.offset(skip).limit(limit).all()
     return cards
 
 

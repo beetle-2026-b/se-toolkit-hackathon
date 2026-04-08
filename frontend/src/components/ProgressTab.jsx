@@ -1,6 +1,6 @@
 import React from 'react';
 
-function ProgressTab({ stats, progress }) {
+function ProgressTab({ stats, progress, deckName }) {
   const boxColors = ['#e74c3c', '#f39c12', '#f1c40f', '#3498db', '#27ae60'];
   const boxLabels = ['Box 1 (New)', 'Box 2 (Learning)', 'Box 3 (Familiar)', 'Box 4 (Proficient)', 'Box 5 (Mastered)'];
 
@@ -43,7 +43,7 @@ function ProgressTab({ stats, progress }) {
 
   return (
     <div className="progress-container">
-      <h2>Learning Progress</h2>
+      <h2>{deckName ? `${deckName} - Progress` : 'Learning Progress'}</h2>
       <div className="progress-overview">
         <div className="mastery-card">
           <h3>Mastery Level</h3>

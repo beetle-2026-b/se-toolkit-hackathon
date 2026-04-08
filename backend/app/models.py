@@ -3,13 +3,22 @@ from sqlalchemy.sql import func
 from app.database import Base
 
 
+class Deck(Base):
+    __tablename__ = "decks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    is_public = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class Card(Base):
     __tablename__ = "cards"
 
     id = Column(Integer, primary_key=True, index=True)
     question = Column(String, nullable=False)
     answer = Column(String, nullable=False)
-    deck_id = Column(Integer, nullable=True)
+    deck_id = Column(Integer, ForeignKey("decks.id"), nullable=True)
     box = Column(Integer, default=1)
     next_review_date = Column(Date, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -25,12 +34,3 @@ class StudySession(Base):
     answered_at = Column(DateTime(timezone=True), server_default=func.now())
     box_before = Column(Integer, nullable=True)
     box_after = Column(Integer, nullable=True)
-
-
-class Deck(Base):
-    __tablename__ = "decks"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    is_public = Column(Boolean, default=False)
-    user_id = Column(String, nullable=True)

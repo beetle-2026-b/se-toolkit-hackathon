@@ -11,6 +11,24 @@ body {
   line-height: 1.6;
 }
 
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background: white;
+  border-right: 1px solid #e0e6ed;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+}
+
 .container {
   max-width: 900px;
   margin: 0 auto;
@@ -520,4 +538,161 @@ header h1 {
   .mastery-card {
     grid-column: span 1;
   }
+
+  .app-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e0e6ed;
+  }
+}
+
+/* Deck Selector Styles */
+.deck-selector {
+  margin-bottom: 20px;
+}
+
+.deck-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.deck-selector-header h3 {
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  border: none;
+  background: #3498db;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s ease;
+}
+
+.btn-small:hover {
+  background: #2980b9;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 4px;
+  transition: transform 0.2s ease;
+}
+
+.btn-icon:hover {
+  transform: scale(1.2);
+}
+
+.deck-create-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.deck-create-form input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.deck-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.deck-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.deck-item:hover {
+  background: #e9ecef;
+}
+
+.deck-item.active {
+  background: #3498db;
+  color: white;
+}
+
+.deck-name {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deck-name.active {
+  color: white;
+}
+
+.deck-count {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.deck-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.deck-edit {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.deck-edit input {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.deck-tag {
+  display: inline-block;
+  background: #e7f5ff;
+  color: #1864ab;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  margin-left: 8px;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+  cursor: pointer;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: #3498db;
 }

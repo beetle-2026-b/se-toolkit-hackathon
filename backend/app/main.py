@@ -34,11 +34,12 @@ frontend_dir = pathlib.Path(__file__).parent.parent / "frontend" / "dist"
 if frontend_dir.exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dir / "assets")), name="assets")
 
-from app.routers import cards, study, ai
+from app.routers import cards, study, ai, decks
 
 app.include_router(cards.router, prefix="/api", tags=["cards"])
 app.include_router(study.router, prefix="/api", tags=["study"])
 app.include_router(ai.router, prefix="/api", tags=["ai"])
+app.include_router(decks.router, prefix="/api", tags=["decks"])
 
 
 @app.get("/")

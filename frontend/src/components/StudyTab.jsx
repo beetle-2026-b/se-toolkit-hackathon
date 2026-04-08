@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getNextStudyCard, rateAnswer, evaluateAnswer, generateHint } from '../services/api';
 
-function StudyTab({ onRatingComplete }) {
+function StudyTab({ deckId, onRatingComplete }) {
   const [studyCard, setStudyCard] = useState(null);
   const [message, setMessage] = useState('');
   const [revealed, setRevealed] = useState(false);
@@ -14,7 +14,7 @@ function StudyTab({ onRatingComplete }) {
 
   useEffect(() => {
     loadNextCard();
-  }, []);
+  }, [deckId]);
 
   const loadNextCard = async () => {
     setError('');
@@ -24,7 +24,7 @@ function StudyTab({ onRatingComplete }) {
     setHint('');
 
     try {
-      const data = await getNextStudyCard();
+      const data = await getNextStudyCard(deckId);
       if (data.message) {
         setMessage(data.message);
         setStudyCard(null);

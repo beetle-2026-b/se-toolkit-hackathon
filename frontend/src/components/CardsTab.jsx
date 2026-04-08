@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { getCards, createCard, updateCard, deleteCard } from '../services/api';
 
-function CardsTab({ cards, setCards }) {
+function CardsTab({ cards, setCards, decks, selectedDeckId }) {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
+  const [deckId, setDeckId] = useState(selectedDeckId || '');
   const [editingCardId, setEditingCardId] = useState(null);
   const [error, setError] = useState('');
 
@@ -15,10 +16,10 @@ function CardsTab({ cards, setCards }) {
 
     try {
       if (editingCardId) {
-        await updateCard(editingCardId, { question, answer });
+        await updateCard(editingCardId, { question, answer, deck_id: deckId || null });
         setEditingCardId(null);
       } else {
-        await createCard({ question, answer });
+        await createCard({ question, answer, deck_id: deckId || null });
       }
       setQuestion('');
       setAnswer('');
@@ -58,6 +59,12 @@ function CardsTab({ cards, setCards }) {
     return new Date(dateString).toLocaleDateString();
   };
 
+  const getDeckName = (deckId) => {
+    if (!deckId) return '';
+    const deck = decks.find(d => d.id === deckId);
+    return deck ? deck.name : '';
+  };
+
   return (
     <div>
       <div className="card-form-container">
@@ -86,6 +93,19 @@ function CardsTab({ cards, setCards }) {
               placeholder="Enter the answer..."
             />
           </div>
+          <div className="form-group">
+            <label htmlFor="deck-select">Deck</label>
+            <select
+              id="deck-select"
+              value={deckId}
+              onChange={(e) => setDeckId(e.target.value)}
+            >
+              <option value="">No Deck (General)</option>
+              {decks.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
           <div className="form-actions">
             <button type="submit" className="btn-primary">
               {editingCardId ? 'Update Card' : 'Add Card'}
@@ -112,6 +132,9 @@ function CardsTab({ cards, setCards }) {
                   <div className="answer">{card.answer}</div>
                   <div className="meta">
                     Box: {card.box} | Created: {formatDate(card.created_at)}
+                    {getDeckName(card.deck_id) && (
+                      <span className="deck-tag">{getDeckName(card.deck_id)}</span>
+                    )}
                   </div>
                 </div>
                 <div className="card-actions">
