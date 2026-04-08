@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Flashcards with AI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Smart Flashcards with AI</h1>
+            <nav>
+                <button class="nav-btn active" data-tab="cards">My Cards</button>
+                <button class="nav-btn" data-tab="study">Study Mode</button>
+                <button class="nav-btn" data-tab="stats">Statistics</button>
+            </nav>
+        </header>
+
+        <main>
+            <section id="cards-tab" class="tab-content active">
+                <div class="card-form-container">
+                    <h2>Create New Card</h2>
+                    <form id="card-form">
+                        <div class="form-group">
+                            <label for="question">Question</label>
+                            <textarea id="question" rows="3" required placeholder="Enter your question..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="answer">Answer</label>
+                            <textarea id="answer" rows="3" required placeholder="Enter the answer..."></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">Add Card</button>
+                    </form>
+                </div>
+
+                <div class="cards-list">
+                    <h2>All Cards (<span id="card-count">0</span>)</h2>
+                    <div id="cards-container"></div>
+                </div>
+            </section>
+
+            <section id="study-tab" class="tab-content">
+                <div class="study-container">
+                    <div id="study-card" class="flashcard">
+                        <p class="placeholder-text">No cards available. Create some cards first!</p>
+                    </div>
+                    <div class="study-controls">
+                        <button id="reveal-btn" class="btn-primary" disabled>Reveal Answer</button>
+                        <div id="rating-buttons" class="hidden">
+                            <button id="correct-btn" class="btn-success">Correct</button>
+                            <button id="incorrect-btn" class="btn-danger">Incorrect</button>
+                        </div>
+                        <button id="next-card-btn" class="btn-primary">Next Card</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="stats-tab" class="tab-content">
+                <div class="stats-container">
+                    <h2>Study Statistics</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Total Cards</h3>
+                            <p id="stat-total">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Studied Today</h3>
+                            <p id="stat-studied">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Correct Today</h3>
+                            <p id="stat-correct" class="text-success">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Incorrect Today</h3>
+                            <p id="stat-incorrect" class="text-danger">0</p>
+                        </div>
+                    </div>
+                    <button id="refresh-stats-btn" class="btn-secondary">Refresh Stats</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
