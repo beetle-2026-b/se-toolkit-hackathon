@@ -94,7 +94,7 @@ function App() {
       case 'study':
         return <StudyTab decks={decks} selectedDeckId={selectedDeckId} />;
       case 'ai-quiz':
-        return <AIQuizTab deckId={selectedDeckId} />;
+        return <AIQuizTab decks={decks} />;
       case 'progress':
         return <ProgressTab stats={stats} scoredStats={scoredStats} progress={progress} deckName={getSelectedDeckName()} />;
       default:
