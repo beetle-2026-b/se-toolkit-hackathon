@@ -33,4 +33,8 @@ RUN mkdir -p /app/app/data
 
 EXPOSE 8000
 
+ENV QWEN_API_URL=${QWEN_API_URL}
+ENV QWEN_API_KEY=${QWEN_API_KEY}
+ENV QWEN_MODEL=${QWEN_MODEL:-qwen-plus}
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

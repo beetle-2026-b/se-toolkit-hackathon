@@ -5,7 +5,9 @@ from typing import List, Dict, Optional
 from pydantic import BaseModel
 
 
-QWEN_API_URL = os.getenv("QWEN_API_URL", "http://localhost:8080/v1/chat/completions")
+QWEN_API_URL = os.getenv("QWEN_API_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions")
+QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
+QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen-plus")
 
 
 class GeneratedCard(BaseModel):
@@ -22,18 +24,28 @@ class EvaluationResult(BaseModel):
 class QwenClient:
     def __init__(self):
         self.api_url = QWEN_API_URL
+        self.api_key = QWEN_API_KEY
+        self.model = QWEN_MODEL
         self.timeout = 30.0
 
     async def _make_request(self, messages: List[Dict[str, str]]) -> Optional[str]:
+        if not self.api_key:
+            print("Warning: QWEN_API_KEY is not set")
+            return None
+
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     self.api_url,
                     json={
-                        "model": "qwen",
+                        "model": self.model,
                         "messages": messages,
                         "temperature": 0.7,
                         "max_tokens": 2000
+                    },
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
                     },
                     timeout=self.timeout
                 )

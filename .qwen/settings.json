@@ -12,7 +12,8 @@
       "Bash(docker compose down)",
       "Bash(sleep *)",
       "Bash(docker volume *)",
-      "Bash(rm *)"
+      "Bash(rm *)",
+      "Bash(docker compose exec *)"
     ]
   },
   "$version": 3
