@@ -32,6 +32,7 @@ nav {
     display: flex;
     justify-content: center;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
 .nav-btn {
@@ -62,7 +63,7 @@ nav {
     display: block;
 }
 
-.card-form-container {
+.card-form-container, .ai-generate-container {
     background: white;
     padding: 24px;
     border-radius: 8px;
@@ -70,9 +71,14 @@ nav {
     margin-bottom: 30px;
 }
 
-.card-form-container h2 {
+.card-form-container h2, .ai-generate-container h2 {
     margin-bottom: 16px;
     color: #2c3e50;
+}
+
+.subtitle {
+    color: #666;
+    margin-bottom: 20px;
 }
 
 .form-group {
@@ -282,24 +288,99 @@ nav {
     display: flex;
     justify-content: center;
     gap: 12px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+}
+
+.hint-box {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+    color: #856404;
+    font-size: 0.95rem;
+}
+
+.ai-feedback {
+    background: #e7f5ff;
+    border: 1px solid #74c0fc;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 12px;
+    text-align: left;
+    font-size: 0.95rem;
+    color: #1864ab;
+}
+
+.answer-evaluation {
+    width: 100%;
+    max-width: 500px;
+}
+
+.answer-evaluation textarea {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.manual-rating {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
 }
 
 .hidden {
     display: none !important;
 }
 
-.stats-container h2 {
+.progress-container h2 {
     margin-bottom: 24px;
     color: #2c3e50;
     text-align: center;
 }
 
-.stats-grid {
+.progress-overview {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 16px;
-    margin-bottom: 24px;
+    margin-bottom: 30px;
+}
+
+.mastery-card {
+    background: white;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+    grid-column: span 2;
+}
+
+.mastery-card h3 {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.mastery-bar {
+    background: #e0e6ed;
+    border-radius: 8px;
+    height: 24px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.mastery-fill {
+    background: linear-gradient(90deg, #27ae60, #2ecc71);
+    height: 100%;
+    transition: width 0.5s ease;
+}
+
+.mastery-card p {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2c3e50;
 }
 
 .stat-card {
@@ -332,9 +413,88 @@ nav {
     color: #e74c3c !important;
 }
 
+.box-distribution {
+    background: white;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 24px;
+}
+
+.box-distribution h3 {
+    margin-bottom: 20px;
+    color: #2c3e50;
+    text-align: center;
+}
+
+.box-chart {
+    display: flex;
+    height: 40px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.box-segment {
+    transition: width 0.3s ease;
+}
+
+.box-legend {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
 #refresh-stats-btn {
     display: block;
     margin: 0 auto;
+}
+
+.generated-cards {
+    margin-top: 24px;
+}
+
+.generated-cards h3 {
+    margin-bottom: 16px;
+    color: #2c3e50;
+}
+
+#generated-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.generated-card {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+.generated-card .question {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
+
+.generated-card .answer {
+    color: #666;
 }
 
 @media (max-width: 600px) {
@@ -358,7 +518,7 @@ nav {
         align-self: flex-end;
     }
 
-    .stats-grid {
-        grid-template-columns: 1fr;
+    .mastery-card {
+        grid-column: span 1;
     }
 }
