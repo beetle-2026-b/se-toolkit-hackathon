@@ -44,7 +44,6 @@ class AIStudySession(Base):
     question = Column(String, nullable=False)
     correct_answer = Column(String, nullable=False)
     user_answer = Column(Text, nullable=False)
-    is_correct = Column(Boolean, nullable=False)
-    confidence = Column(Float, nullable=False)
-    feedback = Column(Text, nullable=False)
+    verdict = Column(String, nullable=False)  # "Correct", "Partially correct", "Incorrect"
+    comment = Column(Text, nullable=False)
     answered_at = Column(DateTime(timezone=True), server_default=func.now())

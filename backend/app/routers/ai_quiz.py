@@ -16,33 +16,18 @@ class QuizCheckRequest(BaseModel):
 
 
 class QuizCheckResponse(BaseModel):
-    is_correct: bool
-    confidence: float
-    feedback: str
-    session_id: int
+    verdict: str
+    comment: str
 
 
 class QuizStatsResponse(BaseModel):
     total_answered: int
     correct_count: int
+    partial_count: int
     incorrect_count: int
-    accuracy: float
-    avg_confidence: float
-
-
-class QuizHistoryItem(BaseModel):
-    id: int
-    card_id: int
-    question: str
-    correct_answer: str
-    user_answer: str
-    is_correct: bool
-    confidence: float
-    feedback: str
-    answered_at: Optional[str]
-
-    class Config:
-        from_attributes = True
+    correct_pct: float
+    partial_pct: float
+    incorrect_pct: float
 
 
 @router.get("/ai-quiz/next")
@@ -75,7 +60,7 @@ async def check_answer(request: QuizCheckRequest, db: Session = Depends(get_db))
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
 
-    result = await qwen_client.evaluate_answer(
+    result = await qwen_client.evaluate_quiz_verdict(
         card.question,
         card.answer,
         request.user_answer
@@ -86,20 +71,13 @@ async def check_answer(request: QuizCheckRequest, db: Session = Depends(get_db))
         question=card.question,
         correct_answer=card.answer,
         user_answer=request.user_answer,
-        is_correct=result.is_correct,
-        confidence=result.confidence,
-        feedback=result.feedback
+        verdict=result.verdict,
+        comment=result.comment
     )
     db.add(session)
     db.commit()
-    db.refresh(session)
 
-    return QuizCheckResponse(
-        is_correct=result.is_correct,
-        confidence=result.confidence,
-        feedback=result.feedback,
-        session_id=session.id
-    )
+    return QuizCheckResponse(verdict=result.verdict, comment=result.comment)
 
 
 @router.get("/ai-quiz/stats", response_model=QuizStatsResponse)
@@ -111,22 +89,25 @@ def get_quiz_stats(db: Session = Depends(get_db)):
         return QuizStatsResponse(
             total_answered=0,
             correct_count=0,
+            partial_count=0,
             incorrect_count=0,
-            accuracy=0.0,
-            avg_confidence=0.0
+            correct_pct=0.0,
+            partial_pct=0.0,
+            incorrect_pct=0.0
         )
 
-    correct_count = sum(1 for s in sessions if s.is_correct)
-    incorrect_count = total - correct_count
-    accuracy = round(correct_count / total * 100, 1)
-    avg_confidence = round(sum(s.confidence for s in sessions) / total * 100, 1)
+    correct_count = sum(1 for s in sessions if s.verdict == "Correct")
+    partial_count = sum(1 for s in sessions if s.verdict == "Partially correct")
+    incorrect_count = total - correct_count - partial_count
 
     return QuizStatsResponse(
         total_answered=total,
         correct_count=correct_count,
+        partial_count=partial_count,
         incorrect_count=incorrect_count,
-        accuracy=accuracy,
-        avg_confidence=avg_confidence
+        correct_pct=round(correct_count / total * 100, 1),
+        partial_pct=round(partial_count / total * 100, 1),
+        incorrect_pct=round(incorrect_count / total * 100, 1)
     )
 
 
@@ -144,9 +125,8 @@ def get_quiz_history(limit: int = 20, db: Session = Depends(get_db)):
             "question": s.question,
             "correct_answer": s.correct_answer,
             "user_answer": s.user_answer,
-            "is_correct": s.is_correct,
-            "confidence": s.confidence,
-            "feedback": s.feedback,
+            "verdict": s.verdict,
+            "comment": s.comment,
             "answered_at": s.answered_at.isoformat() if s.answered_at else None
         })
 

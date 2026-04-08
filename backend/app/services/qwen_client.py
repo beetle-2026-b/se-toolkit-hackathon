@@ -27,6 +27,11 @@ class ScoredEvaluation(BaseModel):
     comment: str  # brief explanation
 
 
+class VerdictEvaluation(BaseModel):
+    verdict: str  # "Correct", "Partially correct", "Incorrect"
+    comment: str  # e.g., "The correct answer is: ..."
+
+
 class QwenClient:
     def __init__(self):
         self.api_url = QWEN_API_URL
@@ -272,6 +277,67 @@ Return ONLY the answer, with no additional text, quotes, or formatting."""
             return ""
 
         return response.strip()
+
+    async def evaluate_quiz_verdict(self, question: str, correct_answer: str, user_answer: str) -> VerdictEvaluation:
+        prompt = f"""You are evaluating a student's answer.
+
+Question: {question}
+Correct Answer: {correct_answer}
+Student's Answer: {user_answer}
+
+Determine if the student's answer is:
+- **Correct**: Means the same thing as the correct answer. Synonyms, abbreviations, nicknames all count (e.g., "cavs" = "Cavaliers", "rose" = "Derrick Rose").
+- **Partially correct**: Has some right elements but is incomplete, vague, or partially wrong.
+- **Incorrect**: Wrong, irrelevant, or "I don't know" type answers.
+
+IMPORTANT: If the student's answer means the same thing as the correct answer (even with different words), mark it Correct.
+
+Return ONLY valid JSON:
+{{
+  "verdict": "Correct",
+  "comment": "The correct answer is: {correct_answer}."
+}}
+
+For Partial: "Partially correct. You mentioned X, but the full answer is: {correct_answer}."
+For Incorrect: "Incorrect. The correct answer is: {correct_answer}."
+For Correct: "Correct."
+
+Return ONLY the JSON object."""
+
+        response = await self._make_request([
+            {"role": "system", "content": "You evaluate student answers as Correct, Partially correct, or Incorrect. You recognize synonyms, abbreviations, and equivalent terms. Always return valid JSON."},
+            {"role": "user", "content": prompt}
+        ])
+
+        if not response:
+            return VerdictEvaluation(
+                verdict="Incorrect",
+                comment=f"The correct answer is: {correct_answer}."
+            )
+
+        try:
+            response = response.strip()
+            if response.startswith("```"):
+                response = response.split("```")[1]
+                if response.startswith("json"):
+                    response = response[4:]
+                response = response.strip()
+
+            data = json.loads(response)
+            verdict = data.get("verdict", "Incorrect")
+            if verdict not in ("Correct", "Partially correct", "Incorrect"):
+                verdict = "Incorrect"
+
+            return VerdictEvaluation(
+                verdict=verdict,
+                comment=data.get("comment", f"The correct answer is: {correct_answer}.")
+            )
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+            print(f"Failed to parse verdict response: {e}")
+            return VerdictEvaluation(
+                verdict="Incorrect",
+                comment=f"The correct answer is: {correct_answer}."
+            )
 
 
 qwen_client = QwenClient()

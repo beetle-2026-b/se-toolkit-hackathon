@@ -10,7 +10,7 @@ function AIQuizTab({ decks }) {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [sessionStats, setSessionStats] = useState({ correct: 0, partial: 0, incorrect: 0, totalScore: 0, count: 0 });
+  const [sessionStats, setSessionStats] = useState({ correct: 0, partial: 0, incorrect: 0 });
 
   const startSession = (id) => {
     if (!id) return;
@@ -20,7 +20,7 @@ function AIQuizTab({ decks }) {
     setResult(null);
     setUserAnswer('');
     setError('');
-    setSessionStats({ correct: 0, partial: 0, incorrect: 0, totalScore: 0, count: 0 });
+    setSessionStats({ correct: 0, partial: 0, incorrect: 0 });
 
     fetch(`/api/cards?deck_id=${id}`)
       .then(r => r.json())
@@ -43,30 +43,30 @@ function AIQuizTab({ decks }) {
       const card = quizCards[currentIndex];
       const resultData = await checkQuizAnswer(card.id, userAnswer);
 
-      // Check if AI failed to evaluate
-      if (resultData.score === 0) {
+      if (!resultData.verdict) {
         setError('AI could not evaluate your answer. Please try again.');
         setLoading(false);
         return;
       }
 
-      setResult(resultData);
+      setResult({
+        ...resultData,
+        correctAnswer: card.answer
+      });
 
       setSessionStats(prev => {
         let category;
-        if (resultData.score >= 8) category = 'correct';
-        else if (resultData.score >= 5) category = 'partial';
+        if (resultData.verdict === 'Correct') category = 'correct';
+        else if (resultData.verdict === 'Partially correct') category = 'partial';
         else category = 'incorrect';
 
         return {
           ...prev,
-          [category]: prev[category] + 1,
-          totalScore: prev.totalScore + resultData.score,
-          count: prev.count + 1
+          [category]: prev[category] + 1
         };
       });
     } catch (err) {
-      setError('Network error. Please check your connection and try again.');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -92,10 +92,6 @@ function AIQuizTab({ decks }) {
     if (total === 0) return 0;
     return Math.round((count / total) * 100);
   };
-
-  const avgScore = sessionStats.count > 0
-    ? Math.round(sessionStats.totalScore / sessionStats.count * 10) / 10
-    : 0;
 
   const currentCard = quizCards[currentIndex];
 
@@ -128,6 +124,7 @@ function AIQuizTab({ decks }) {
   // Completion screen
   if (phase === 'done') {
     const deck = decks.find(d => d.id === deckId);
+    const total = sessionStats.correct + sessionStats.partial + sessionStats.incorrect;
     return (
       <div className="ai-quiz-container">
         <div className="completion-screen">
@@ -137,21 +134,17 @@ function AIQuizTab({ decks }) {
           </p>
           <div className="session-stats">
             <div className="session-stat correct">
-              <h3>Average Score</h3>
-              <p>{avgScore} / 10</p>
-            </div>
-            <div className="session-stat correct">
-              <h3>Correct (8-10)</h3>
+              <h3>Correct</h3>
               <p>{sessionStats.correct}</p>
               <span>{getPercentage(sessionStats.correct)}%</span>
             </div>
             <div className="session-stat partial">
-              <h3>Partial (5-7)</h3>
+              <h3>Partially Correct</h3>
               <p>{sessionStats.partial}</p>
               <span>{getPercentage(sessionStats.partial)}%</span>
             </div>
             <div className="session-stat incorrect">
-              <h3>Incorrect (1-4)</h3>
+              <h3>Incorrect</h3>
               <p>{sessionStats.incorrect}</p>
               <span>{getPercentage(sessionStats.incorrect)}%</span>
             </div>
@@ -168,6 +161,9 @@ function AIQuizTab({ decks }) {
   if (!currentCard) {
     return <div className="ai-quiz-container"><p className="placeholder-text">Loading...</p></div>;
   }
+
+  const verdictColor = result?.verdict === 'Correct' ? '#27ae60'
+    : result?.verdict === 'Partially correct' ? '#f39c12' : '#e74c3c';
 
   return (
     <div className="ai-quiz-container">
@@ -200,17 +196,13 @@ function AIQuizTab({ decks }) {
           </>
         ) : (
           <>
-            <div className="score-result">
-              <div className="score-circle" style={{ borderColor: getScoreColor(result.score) }}>
-                <span className="score-number" style={{ color: getScoreColor(result.score) }}>
-                  {result.score}
+            <div className="verdict-result">
+              <div className="verdict-badge" style={{ borderColor: verdictColor }}>
+                <span className="verdict-text" style={{ color: verdictColor }}>
+                  {result.verdict}
                 </span>
-                <span className="score-total">/10</span>
               </div>
-              <div className="score-label" style={{ color: getScoreColor(result.score) }}>
-                {result.label}
-              </div>
-              <div className="score-comment">{result.comment}</div>
+              <div className="verdict-comment">{result.comment}</div>
             </div>
             <button className="btn-primary" onClick={handleNext}>Next</button>
           </>
@@ -218,14 +210,10 @@ function AIQuizTab({ decks }) {
       </div>
 
       {/* Live Stats */}
-      {sessionStats.count > 0 && (
+      {(sessionStats.correct + sessionStats.partial + sessionStats.incorrect) > 0 && (
         <div className="live-stats">
           <h3>Session Stats</h3>
           <div className="live-stats-grid">
-            <div className="live-stat correct">
-              <span className="live-stat-label">Avg Score</span>
-              <span className="live-stat-count">{avgScore} / 10</span>
-            </div>
             <div className="live-stat correct">
               <span className="live-stat-label">Correct</span>
               <span className="live-stat-count">{sessionStats.correct}</span>
@@ -251,12 +239,6 @@ function AIQuizTab({ decks }) {
       )}
     </div>
   );
-}
-
-function getScoreColor(score) {
-  if (score >= 8) return '#27ae60';
-  if (score >= 5) return '#f39c12';
-  return '#e74c3c';
 }
 
 export default AIQuizTab;
