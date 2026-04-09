@@ -210,3 +210,14 @@ def clear_all_stats(db: Session = Depends(get_db)):
     db.query(Card).update({"box": 1, "next_review_date": None, "last_reviewed": None})
     db.commit()
     return {"message": "All progress cleared"}
+
+
+@router.post("/study/clear-all-progress")
+def clear_all_progress(db: Session = Depends(get_db)):
+    """Clear all study and AI quiz sessions, reset cards to initial state."""
+    db.query(StudySession).delete()
+    from app.models import AIStudySession
+    db.query(AIStudySession).delete()
+    db.query(Card).update({"box": 1, "next_review_date": None, "last_reviewed": None})
+    db.commit()
+    return {"message": "All progress cleared"}

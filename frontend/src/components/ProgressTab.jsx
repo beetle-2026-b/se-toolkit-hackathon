@@ -3,22 +3,38 @@ import React, { useState, useEffect } from 'react';
 function ProgressTab({ deckName }) {
   const [studyStats, setStudyStats] = useState(null);
   const [quizStats, setQuizStats] = useState(null);
+  const [clearing, setClearing] = useState(false);
+
+  const fetchStats = async () => {
+    try {
+      const [sRes, qRes] = await Promise.all([
+        fetch('/api/study/stats').then(r => r.json()),
+        fetch('/api/ai-quiz/stats').then(r => r.json())
+      ]);
+      setStudyStats(sRes);
+      setQuizStats(qRes);
+    } catch (err) {
+      console.error('Failed to load stats:', err);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [sRes, qRes] = await Promise.all([
-          fetch('/api/study/stats').then(r => r.json()),
-          fetch('/api/ai-quiz/stats').then(r => r.json())
-        ]);
-        setStudyStats(sRes);
-        setQuizStats(qRes);
-      } catch (err) {
-        console.error('Failed to load stats:', err);
-      }
-    };
     fetchStats();
   }, []);
+
+  const handleClearAll = async () => {
+    if (!confirm('Clear all progress? This resets all cards and removes all study history.')) return;
+    setClearing(true);
+    try {
+      const res = await fetch('/api/study/clear-all-progress', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to clear');
+      await fetchStats();
+    } catch (err) {
+      alert('Failed to clear progress.');
+    } finally {
+      setClearing(false);
+    }
+  };
 
   const s = studyStats || {};
   const q = quizStats || {};
@@ -71,6 +87,12 @@ function ProgressTab({ deckName }) {
           <h3>Incorrect</h3>
           <p className="text-danger">{q.incorrect_count || 0}</p>
         </div>
+      </div>
+
+      <div className="progress-refresh-section">
+        <button className="btn-refresh" onClick={handleClearAll} disabled={clearing}>
+          {clearing ? 'Clearing...' : 'Refresh Progress'}
+        </button>
       </div>
     </div>
   );

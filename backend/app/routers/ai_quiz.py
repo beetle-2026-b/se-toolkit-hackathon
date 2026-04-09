@@ -122,3 +122,11 @@ def get_quiz_history(limit: int = 20, db: Session = Depends(get_db)):
         })
 
     return result
+
+
+@router.post("/ai-quiz/clear-today")
+def clear_today_quiz_stats(db: Session = Depends(get_db)):
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    db.query(AIStudySession).filter(AIStudySession.answered_at >= today_start).delete()
+    db.commit()
+    return {"message": "Today's AI quiz progress cleared"}
