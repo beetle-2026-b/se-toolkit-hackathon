@@ -133,3 +133,34 @@ async def upload_pdf(file: UploadFile = File(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
+
+
+class GenerateDeckNameRequest(BaseModel):
+    text: str
+
+
+class GenerateDeckNameResponse(BaseModel):
+    name: str
+
+
+@router.post("/generate-deck-name", response_model=GenerateDeckNameResponse)
+async def generate_deck_name(request: GenerateDeckNameRequest):
+    if not request.text.strip():
+        raise HTTPException(status_code=400, detail="Text cannot be empty")
+
+    # Take first 500 chars for context
+    text = request.text[:500]
+
+    prompt = f"""Based on this text, suggest a short, descriptive deck name (2-4 words). Return ONLY the name, nothing else.
+
+Text: {text}"""
+
+    response = await qwen_client._make_request([
+        {"role": "system", "content": "You suggest short, descriptive names for flashcard decks. Return ONLY the name."},
+        {"role": "user", "content": prompt}
+    ])
+
+    if not response:
+        raise HTTPException(status_code=500, detail="Failed to generate deck name.")
+
+    return GenerateDeckNameResponse(name=response.strip().strip('"').strip())

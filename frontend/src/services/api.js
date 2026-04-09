@@ -191,6 +191,19 @@ export async function uploadPDF(file) {
   return res.json();
 }
 
+export async function generateDeckName(text) {
+  const res = await fetch(`${API_URL}/api/generate-deck-name`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to generate deck name');
+  }
+  return res.json();
+}
+
 export async function generateAnswer(question) {
   const res = await fetch(`${API_URL}/api/generate-answer`, {
     method: 'POST',
