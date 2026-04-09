@@ -20,14 +20,11 @@ class QuizCheckResponse(BaseModel):
     comment: str
 
 
-class QuizStatsResponse(BaseModel):
+class QuizStats(BaseModel):
     total_answered: int
     correct_count: int
     partial_count: int
     incorrect_count: int
-    correct_pct: float
-    partial_pct: float
-    incorrect_pct: float
 
 
 @router.get("/ai-quiz/next")
@@ -80,34 +77,28 @@ async def check_answer(request: QuizCheckRequest, db: Session = Depends(get_db))
     return QuizCheckResponse(verdict=result.verdict, comment=result.comment)
 
 
-@router.get("/ai-quiz/stats", response_model=QuizStatsResponse)
+@router.get("/ai-quiz/stats", response_model=QuizStats)
 def get_quiz_stats(db: Session = Depends(get_db)):
     sessions = db.query(AIStudySession).all()
 
     total = len(sessions)
     if total == 0:
-        return QuizStatsResponse(
+        return QuizStats(
             total_answered=0,
             correct_count=0,
             partial_count=0,
-            incorrect_count=0,
-            correct_pct=0.0,
-            partial_pct=0.0,
-            incorrect_pct=0.0
+            incorrect_count=0
         )
 
     correct_count = sum(1 for s in sessions if s.verdict == "Correct")
     partial_count = sum(1 for s in sessions if s.verdict == "Partially correct")
-    incorrect_count = total - correct_count - partial_count
+    incorrect_count = sum(1 for s in sessions if s.verdict == "Incorrect")
 
-    return QuizStatsResponse(
+    return QuizStats(
         total_answered=total,
         correct_count=correct_count,
         partial_count=partial_count,
-        incorrect_count=incorrect_count,
-        correct_pct=round(correct_count / total * 100, 1),
-        partial_pct=round(partial_count / total * 100, 1),
-        incorrect_pct=round(incorrect_count / total * 100, 1)
+        incorrect_count=incorrect_count
     )
 
 

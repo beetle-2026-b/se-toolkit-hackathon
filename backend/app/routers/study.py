@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime, date
 from app.database import get_db
-from app.models import Card, StudySession
+from app.models import Card, StudySession, AIStudySession, Deck
 from app.services.spaced_repetition import calculate_next_review, get_box_info, get_mastery_level
 from app.services.qwen_client import qwen_client
 
@@ -36,6 +36,7 @@ class StudyStats(BaseModel):
     total_cards: int
     studied_today: int
     correct_today: int
+    partial_today: int
     incorrect_today: int
 
 
@@ -45,16 +46,6 @@ class ScoredStudyStats(BaseModel):
     partial_count: int
     incorrect_count: int
     average_score: float
-
-
-class ProgressStats(BaseModel):
-    total_cards: int
-    total_learned: int
-    average_score: float
-    studied_today: int
-    correct_today: int
-    partial_today: int
-    incorrect_today: int
 
 
 @router.get("/study/next")
@@ -139,29 +130,26 @@ async def score_answer(request: ScoreAnswerRequest, db: Session = Depends(get_db
 
 @router.get("/study/stats", response_model=StudyStats)
 def get_study_stats(db: Session = Depends(get_db), deck_id: Optional[int] = None):
-    query = db.query(Card)
-    if deck_id is not None:
-        query = query.filter(Card.deck_id == deck_id)
-
-    total_cards = query.count()
+    total_cards = db.query(Card).count()
 
     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_sessions = db.query(StudySession).filter(StudySession.answered_at >= today_start).all()
 
-    session_query = db.query(StudySession).join(Card, StudySession.card_id == Card.id)
-    if deck_id is not None:
-        session_query = session_query.filter(Card.deck_id == deck_id)
-    session_query = session_query.filter(StudySession.answered_at >= today_start)
+    studied_today = len(set(s.card_id for s in today_sessions))
 
-    today_sessions = session_query.all()
+    last_session_per_card = {}
+    for s in today_sessions:
+        last_session_per_card[s.card_id] = s
 
-    studied_today = len(today_sessions)
-    correct_today = sum(1 for s in today_sessions if s.is_correct)
-    incorrect_today = studied_today - correct_today
+    correct_today = sum(1 for s in last_session_per_card.values() if s.rating == "correct")
+    partial_today = sum(1 for s in last_session_per_card.values() if s.rating == "partial")
+    incorrect_today = sum(1 for s in last_session_per_card.values() if s.rating == "incorrect")
 
     return StudyStats(
         total_cards=total_cards,
         studied_today=studied_today,
         correct_today=correct_today,
+        partial_today=partial_today,
         incorrect_today=incorrect_today
     )
 
@@ -208,65 +196,17 @@ def get_scored_study_stats(db: Session = Depends(get_db)):
     )
 
 
-@router.get("/study/progress", response_model=ProgressStats)
-def get_progress(db: Session = Depends(get_db), deck_id: Optional[int] = None):
-    card_query = db.query(Card)
-    if deck_id is not None:
-        card_query = card_query.filter(Card.deck_id == deck_id)
-
-    total_cards = card_query.count()
-
-    # Total learned: cards answered correctly at least once (ever)
-    session_query = db.query(StudySession.card_id).filter(StudySession.is_correct == True)
-    if deck_id is not None:
-        session_query = session_query.join(Card, StudySession.card_id == Card.id).filter(Card.deck_id == deck_id)
-
-    learned_card_ids = set(row[0] for row in session_query.distinct().all())
-    total_learned = len(learned_card_ids)
-
-    # Average score
-    all_sessions = db.query(StudySession).all()
-    if deck_id is not None:
-        all_sessions = [s for s in all_sessions if s.card_id in {c.id for c in card_query.all()}]
-
-    if all_sessions:
-        scores = []
-        for s in all_sessions:
-            if s.box_after >= 4:
-                scores.append(9)
-            elif s.box_after >= 2:
-                scores.append(6)
-            else:
-                scores.append(2)
-        average_score = round(sum(scores) / len(scores), 1) if scores else 0.0
-    else:
-        average_score = 0.0
-
-    # Today stats - unique cards only
+@router.post("/study/clear-today")
+def clear_today_stats(db: Session = Depends(get_db)):
     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_query = db.query(StudySession).filter(StudySession.answered_at >= today_start)
-    if deck_id is not None:
-        today_query = today_query.join(Card, StudySession.card_id == Card.id).filter(Card.deck_id == deck_id)
+    db.query(StudySession).filter(StudySession.answered_at >= today_start).delete()
+    db.commit()
+    return {"message": "Today's progress cleared"}
 
-    today_sessions = today_query.all()
-    today_unique_cards = set(s.card_id for s in today_sessions)
-    studied_today = len(today_unique_cards)
 
-    # Today breakdown - unique cards with their last rating
-    last_session_per_card = {}
-    for s in today_sessions:
-        last_session_per_card[s.card_id] = s
-
-    correct_today = sum(1 for s in last_session_per_card.values() if s.rating == "correct")
-    partial_today = sum(1 for s in last_session_per_card.values() if s.rating == "partial")
-    incorrect_today = sum(1 for s in last_session_per_card.values() if s.rating == "incorrect")
-
-    return ProgressStats(
-        total_cards=total_cards,
-        total_learned=total_learned,
-        average_score=average_score,
-        studied_today=studied_today,
-        correct_today=correct_today,
-        partial_today=partial_today,
-        incorrect_today=incorrect_today
-    )
+@router.post("/study/clear-all")
+def clear_all_stats(db: Session = Depends(get_db)):
+    db.query(StudySession).delete()
+    db.query(Card).update({"box": 1, "next_review_date": None, "last_reviewed": None})
+    db.commit()
+    return {"message": "All progress cleared"}

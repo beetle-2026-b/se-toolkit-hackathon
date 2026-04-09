@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { checkQuizAnswer } from '../services/api';
 import DeckSelection from './DeckSelection';
 
-function AIQuizTab({ decks }) {
+function AIQuizTab({ decks, onCardRated }) {
   const [phase, setPhase] = useState('select');
   const [deckId, setDeckId] = useState(null);
   const [quizCards, setQuizCards] = useState([]);
@@ -59,6 +59,8 @@ function AIQuizTab({ decks }) {
       });
 
       setLastUserAnswer(userAnswer);
+
+      if (onCardRated) onCardRated();
 
       setSessionStats(prev => {
         let category;

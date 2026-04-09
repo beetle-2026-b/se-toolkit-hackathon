@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getNextStudyCard, rateAnswer, generateHint } from '../services/api';
+import { getNextStudyCard } from '../services/api';
 import DeckSelection from './DeckSelection';
 
-function StudyTab({ decks, selectedDeckId }) {
+function StudyTab({ decks, selectedDeckId, onCardRated }) {
   const [phase, setPhase] = useState('select'); // 'select' | 'studying' | 'done'
   const [deckId, setDeckId] = useState(null);
   const [deckCards, setDeckCards] = useState([]);
@@ -33,9 +33,19 @@ function StudyTab({ decks, selectedDeckId }) {
     if (!card) return;
 
     try {
-      await rateAnswer(card.id, rating === 'correct' || rating === 'partial');
+      const res = await fetch('/api/study/self-rate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card_id: card.id, rating })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Failed to rate answer');
+      }
+      if (onCardRated) onCardRated();
     } catch (err) {
       setError('Error rating answer.');
+      return;
     }
 
     setStats(prev => ({

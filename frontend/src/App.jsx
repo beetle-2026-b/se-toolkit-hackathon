@@ -45,24 +45,28 @@ function App() {
     }
   };
 
+  const loadProgress = async () => {
+    try {
+      const [statsData, scoredData, progressData] = await Promise.all([
+        getStudyStats(selectedDeckId),
+        getScoredStudyStats(),
+        getProgress(selectedDeckId)
+      ]);
+      setStats(statsData);
+      setScoredStats(scoredData);
+      setProgress(progressData);
+    } catch (err) {
+      console.error('Error loading stats:', err);
+    }
+  };
+
   const loadDataForTab = async () => {
     if (activeTab === 'cards') {
       loadCards();
     } else if (activeTab === 'study') {
       // StudyTab loads its own data
     } else if (activeTab === 'progress') {
-      try {
-        const [statsData, scoredData, progressData] = await Promise.all([
-          getStudyStats(selectedDeckId),
-          getScoredStudyStats(),
-          getProgress(selectedDeckId)
-        ]);
-        setStats(statsData);
-        setScoredStats(scoredData);
-        setProgress(progressData);
-      } catch (err) {
-        console.error('Error loading stats:', err);
-      }
+      loadProgress();
     }
   };
 
@@ -91,11 +95,11 @@ function App() {
       case 'ai-generate':
         return <AIGenerateTab onDeckCreated={loadDecks} />;
       case 'study':
-        return <StudyTab decks={decks} selectedDeckId={selectedDeckId} />;
+        return <StudyTab decks={decks} selectedDeckId={selectedDeckId} onCardRated={loadProgress} />;
       case 'ai-quiz':
-        return <AIQuizTab decks={decks} />;
+        return <AIQuizTab decks={decks} onCardRated={loadProgress} />;
       case 'progress':
-        return <ProgressTab stats={stats} scoredStats={scoredStats} progress={progress} deckName={getSelectedDeckName()} />;
+        return <ProgressTab deckName={getSelectedDeckName()} />;
       default:
         return null;
     }

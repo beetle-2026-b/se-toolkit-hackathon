@@ -1,47 +1,77 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
-function ProgressTab({ stats, progress, deckName }) {
-  const p = progress || {};
+function ProgressTab({ deckName }) {
+  const [studyStats, setStudyStats] = useState(null);
+  const [quizStats, setQuizStats] = useState(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [sRes, qRes] = await Promise.all([
+          fetch('/api/study/stats').then(r => r.json()),
+          fetch('/api/ai-quiz/stats').then(r => r.json())
+        ]);
+        setStudyStats(sRes);
+        setQuizStats(qRes);
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const s = studyStats || {};
+  const q = quizStats || {};
 
   return (
     <div className="progress-container">
       <h2>{deckName ? `${deckName} - Progress` : 'Learning Progress'}</h2>
 
-      {/* Total Stats */}
-      <h3 className="stats-section-title">Total</h3>
+      {/* Study Mode Section */}
+      <h3 className="stats-section-title">Study Mode</h3>
       <div className="progress-overview">
         <div className="stat-card">
           <h3>Total Cards</h3>
-          <p>{p.total_cards || 0}</p>
+          <p>{s.total_cards || 0}</p>
         </div>
         <div className="stat-card">
-          <h3>Total Learned</h3>
-          <p className="text-success">{p.total_learned || 0}</p>
-        </div>
-      </div>
-
-      {/* Today Stats */}
-      <h3 className="stats-section-title">Today</h3>
-      <div className="progress-overview">
-        <div className="stat-card today-highlight">
-          <h3>Studied</h3>
-          <p>{p.studied_today || 0}</p>
+          <h3>Studied Today</h3>
+          <p>{s.studied_today || 0}</p>
         </div>
         <div className="stat-card">
           <h3>Correct</h3>
-          <p className="text-success">{p.correct_today || 0}</p>
+          <p className="text-success">{s.correct_today || 0}</p>
         </div>
         <div className="stat-card">
           <h3>Partial</h3>
-          <p style={{ color: '#f39c12' }}>{p.partial_today || 0}</p>
+          <p style={{ color: '#f39c12' }}>{s.partial_today || 0}</p>
         </div>
         <div className="stat-card">
           <h3>Incorrect</h3>
-          <p className="text-danger">{p.incorrect_today || 0}</p>
+          <p className="text-danger">{s.incorrect_today || 0}</p>
         </div>
       </div>
 
-      <button id="refresh-stats-btn" className="btn-secondary">Refresh Progress</button>
+      {/* AI Quiz Mode Section */}
+      <h3 className="stats-section-title">AI Quiz Mode</h3>
+      <div className="progress-overview">
+        <div className="stat-card">
+          <h3>Total Answered</h3>
+          <p>{q.total_answered || 0}</p>
+        </div>
+        <div className="stat-card">
+          <h3>Correct</h3>
+          <p className="text-success">{q.correct_count || 0}</p>
+        </div>
+        <div className="stat-card">
+          <h3>Partial</h3>
+          <p style={{ color: '#f39c12' }}>{q.partial_count || 0}</p>
+        </div>
+        <div className="stat-card">
+          <h3>Incorrect</h3>
+          <p className="text-danger">{q.incorrect_count || 0}</p>
+        </div>
+      </div>
     </div>
   );
 }
