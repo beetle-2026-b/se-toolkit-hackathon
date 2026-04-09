@@ -652,6 +652,32 @@ header h1 {
   font-size: 0.85rem;
 }
 
+/* Generated Card Edit Button */
+.generated-card-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+.generated-card .edit-btn {
+  background: #f39c12;
+  color: white;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.generated-card .edit-btn:hover {
+  background: #e67e22;
+}
+
 /* Delete Deck Section */
 .delete-deck-section {
   margin-top: 24px;

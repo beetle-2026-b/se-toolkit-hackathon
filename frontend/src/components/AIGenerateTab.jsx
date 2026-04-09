@@ -230,13 +230,13 @@ function AIGenerateTab({ onDeckCreated }) {
                     </div>
                   </div>
                 ) : (
-                  <>
+                  <div className="generated-card-row">
                     <div className="card-edit-content">
                       <div className="question">{index + 1}. {card.question}</div>
                       <div className="answer">{card.answer}</div>
                     </div>
                     <button className="edit-btn" onClick={() => startEdit(index)}>Edit</button>
-                  </>
+                  </div>
                 )}
               </div>
             ))}
