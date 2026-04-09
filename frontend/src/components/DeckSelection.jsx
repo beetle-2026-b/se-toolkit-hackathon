@@ -83,9 +83,11 @@ function DeckSelection({ decks, onSelectDeck, onCreateSuccess, showCreate = true
           </button>
         ))}
       </div>
-      <button className="btn-create-deck" onClick={() => setShowCreate(true)}>
-        + Create New Deck
-      </button>
+      {showCreate && (
+        <button className="btn-create-deck" onClick={() => setShowCreateForm(true)}>
+          + Create New Deck
+        </button>
+      )}
     </div>
   );
 }

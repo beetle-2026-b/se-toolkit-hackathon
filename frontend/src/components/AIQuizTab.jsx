@@ -111,6 +111,7 @@ function AIQuizTab({ decks }) {
         <DeckSelection
           decks={decks}
           onSelectDeck={startSession}
+          showCreate={false}
         />
       </div>
     );

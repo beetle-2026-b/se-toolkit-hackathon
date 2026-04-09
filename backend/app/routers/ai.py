@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import List, Optional
+from io import BytesIO
+from pypdf import PdfReader
 from app.services.qwen_client import qwen_client
 
 router = APIRouter()
@@ -98,3 +100,36 @@ async def generate_answer(request: GenerateAnswerRequest):
         raise HTTPException(status_code=500, detail="Failed to generate answer. Please check the AI service.")
 
     return GenerateAnswerResponse(answer=answer)
+
+
+@router.post("/upload-pdf", response_model=List[CardResponse])
+async def upload_pdf(file: UploadFile = File(...)):
+    if not file.filename or not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+
+    try:
+        content = await file.read()
+        pdf_file = BytesIO(content)
+        reader = PdfReader(pdf_file)
+
+        text = ""
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+
+        text = text.strip()
+
+        if len(text) < 50:
+            raise HTTPException(status_code=400, detail="PDF contains too little text. Please provide a file with more content.")
+
+        cards = await qwen_client.generate_cards(text)
+
+        if not cards:
+            raise HTTPException(status_code=500, detail="Failed to generate cards from PDF. Please check the AI service.")
+
+        return cards
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")

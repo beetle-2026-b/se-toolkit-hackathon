@@ -81,6 +81,7 @@ function StudyTab({ decks, selectedDeckId }) {
         <DeckSelection
           decks={decks}
           onSelectDeck={startSession}
+          showCreate={false}
         />
       </div>
     );

@@ -130,6 +130,7 @@ function CardsTab({ decks, setDecks }) {
           decks={decks}
           onSelectDeck={openDeck}
           onCreateSuccess={refreshDecks}
+          showCreate={true}
         />
       </div>
     );

@@ -122,6 +122,59 @@ header h1 {
   margin-bottom: 20px;
 }
 
+/* PDF Upload */
+.pdf-upload-section {
+  margin-bottom: 16px;
+}
+
+.pdf-upload-section input[type="file"] {
+  display: none;
+}
+
+.pdf-upload-label {
+  display: block;
+  padding: 16px;
+  background: white;
+  border: 2px dashed #bdc3c7;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #7f8c8d;
+  transition: all 0.2s ease;
+}
+
+.pdf-upload-label:hover {
+  border-color: #3498db;
+  color: #3498db;
+  background: #f0f8ff;
+}
+
+.pdf-hint {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #999;
+  margin-top: 6px;
+}
+
+/* Divider */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e0e6ed;
+}
+
 .error-message {
   background: #fee;
   border: 1px solid #e74c3c;
