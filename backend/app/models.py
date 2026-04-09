@@ -3,11 +3,21 @@ from sqlalchemy.sql import func
 from app.database import Base
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class Deck(Base):
     __tablename__ = "decks"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     is_public = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -19,6 +29,7 @@ class Card(Base):
     question = Column(String, nullable=False)
     answer = Column(String, nullable=False)
     deck_id = Column(Integer, ForeignKey("decks.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     box = Column(Integer, default=1)
     next_review_date = Column(Date, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -30,8 +41,9 @@ class StudySession(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     card_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     is_correct = Column(Boolean, nullable=True)
-    rating = Column(String, nullable=True)  # "correct", "partial", "incorrect"
+    rating = Column(String, nullable=True)
     answered_at = Column(DateTime(timezone=True), server_default=func.now())
     box_before = Column(Integer, nullable=True)
     box_after = Column(Integer, nullable=True)
@@ -42,9 +54,10 @@ class AIStudySession(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     card_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     question = Column(String, nullable=False)
     correct_answer = Column(String, nullable=False)
     user_answer = Column(Text, nullable=False)
-    verdict = Column(String, nullable=False)  # "Correct", "Partially correct", "Incorrect"
+    verdict = Column(String, nullable=False)
     comment = Column(Text, nullable=False)
     answered_at = Column(DateTime(timezone=True), server_default=func.now())

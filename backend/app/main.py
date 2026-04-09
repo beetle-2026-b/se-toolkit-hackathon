@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from app.database import engine, Base
 
 # Import models BEFORE creating tables (they register with Base)
-from app.models import Card, StudySession, Deck
+from app.models import User, Card, StudySession, Deck, AIStudySession
 
 # Now create tables with all models registered
 Base.metadata.create_all(bind=engine)
@@ -34,8 +34,9 @@ frontend_dir = pathlib.Path(__file__).parent.parent / "frontend" / "dist"
 if frontend_dir.exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dir / "assets")), name="assets")
 
-from app.routers import cards, study, ai, decks, ai_quiz
+from app.routers import cards, study, ai, decks, ai_quiz, auth
 
+app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(cards.router, prefix="/api", tags=["cards"])
 app.include_router(study.router, prefix="/api", tags=["study"])
 app.include_router(ai.router, prefix="/api", tags=["ai"])
