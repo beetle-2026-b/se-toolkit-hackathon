@@ -89,7 +89,7 @@ function App() {
       case 'cards':
         return <CardsTab decks={decks} setDecks={setDecks} />;
       case 'ai-generate':
-        return <AIGenerateTab />;
+        return <AIGenerateTab onDeckCreated={loadDecks} />;
       case 'study':
         return <StudyTab decks={decks} selectedDeckId={selectedDeckId} />;
       case 'ai-quiz':

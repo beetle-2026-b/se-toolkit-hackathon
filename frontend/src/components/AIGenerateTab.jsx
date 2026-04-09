@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { generateCardsFromText, uploadPDF, createDeck, createCard, generateDeckName } from '../services/api';
 
-function AIGenerateTab() {
+function AIGenerateTab({ onDeckCreated }) {
   const [sourceText, setSourceText] = useState('');
   const [generatedCards, setGeneratedCards] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -12,6 +12,9 @@ function AIGenerateTab() {
   const [saving, setSaving] = useState(false);
   const [sourceTextForName, setSourceTextForName] = useState('');
   const [nameLoading, setNameLoading] = useState(false);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editQuestion, setEditQuestion] = useState('');
+  const [editAnswer, setEditAnswer] = useState('');
 
   const handleGenerate = async (e) => {
     e.preventDefault();
@@ -26,12 +29,12 @@ function AIGenerateTab() {
     setGeneratedCards([]);
     setDeckName('');
     setNameLoading(true);
+    setEditingIndex(null);
     try {
       const cards = await generateCardsFromText(sourceText);
       setGeneratedCards(cards);
       setSourceTextForName(sourceText);
 
-      // Automatically generate deck name
       try {
         const nameData = await generateDeckName(sourceText);
         setDeckName(nameData.name);
@@ -58,13 +61,13 @@ function AIGenerateTab() {
     setGeneratedCards([]);
     setDeckName('');
     setNameLoading(true);
+    setEditingIndex(null);
 
     try {
       const cards = await uploadPDF(file);
       setGeneratedCards(cards);
       setSourceTextForName(file.name.replace('.pdf', ''));
 
-      // Automatically generate deck name from filename
       try {
         const nameData = await generateDeckName(file.name.replace('.pdf', ''));
         setDeckName(nameData.name);
@@ -80,6 +83,26 @@ function AIGenerateTab() {
     } finally {
       setPdfLoading(false);
     }
+  };
+
+  const startEdit = (index) => {
+    setEditingIndex(index);
+    setEditQuestion(generatedCards[index].question);
+    setEditAnswer(generatedCards[index].answer);
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setEditQuestion('');
+    setEditAnswer('');
+  };
+
+  const saveEdit = () => {
+    if (editingIndex === null) return;
+    const updated = [...generatedCards];
+    updated[editingIndex] = { question: editQuestion, answer: editAnswer };
+    setGeneratedCards(updated);
+    setEditingIndex(null);
   };
 
   const handleSaveAll = async () => {
@@ -105,6 +128,9 @@ function AIGenerateTab() {
       setDeckName('');
       setSourceTextForName('');
       setError('');
+
+      if (onDeckCreated) onDeckCreated();
+
       alert(`Deck "${deckName}" created with ${count} cards!`);
     } catch (err) {
       setError('Failed to save. ' + err.message);
@@ -182,8 +208,36 @@ function AIGenerateTab() {
           <div className="generated-cards-list">
             {generatedCards.map((card, index) => (
               <div key={index} className="generated-card">
-                <div className="question">{index + 1}. {card.question}</div>
-                <div className="answer">{card.answer}</div>
+                {editingIndex === index ? (
+                  <div className="card-edit-form">
+                    <input
+                      type="text"
+                      value={editQuestion}
+                      onChange={(e) => setEditQuestion(e.target.value)}
+                      placeholder="Question"
+                      className="edit-input"
+                    />
+                    <textarea
+                      rows="2"
+                      value={editAnswer}
+                      onChange={(e) => setEditAnswer(e.target.value)}
+                      placeholder="Answer"
+                      className="edit-textarea"
+                    />
+                    <div className="edit-actions">
+                      <button className="btn-small btn-success" onClick={saveEdit}>Save</button>
+                      <button className="btn-small btn-secondary" onClick={cancelEdit}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="card-edit-content">
+                      <div className="question">{index + 1}. {card.question}</div>
+                      <div className="answer">{card.answer}</div>
+                    </div>
+                    <button className="edit-btn" onClick={() => startEdit(index)}>Edit</button>
+                  </>
+                )}
               </div>
             ))}
           </div>
