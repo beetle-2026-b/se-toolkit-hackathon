@@ -194,9 +194,12 @@ function AIQuizTab({ decks }) {
               className="quiz-answer-textarea"
               disabled={loading}
             />
-            <button className="btn-primary" onClick={handleCheck} disabled={loading}>
-              {loading ? 'Checking...' : 'Check'}
-            </button>
+            <div className="quiz-buttons-row">
+              <button className="btn-secondary" onClick={handleNext}>Next</button>
+              <button className="btn-primary" onClick={handleCheck} disabled={loading}>
+                {loading ? 'Checking...' : 'Check'}
+              </button>
+            </div>
           </>
         ) : (
           <>
