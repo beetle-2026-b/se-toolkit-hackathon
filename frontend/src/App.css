@@ -594,6 +594,13 @@ header h1 {
   border-color: #3498db;
 }
 
+.deck-name-loading {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: #999;
+  margin-top: 4px;
+}
+
 .generated-cards {
   margin-top: 24px;
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { generateCardsFromText, uploadPDF, createDeck, createCard } from '../services/api';
+import { generateCardsFromText, uploadPDF, createDeck, createCard, generateDeckName } from '../services/api';
 
 function AIGenerateTab() {
   const [sourceText, setSourceText] = useState('');
@@ -9,9 +9,9 @@ function AIGenerateTab() {
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [deckName, setDeckName] = useState('');
-  const [showDeckName, setShowDeckName] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sourceTextForName, setSourceTextForName] = useState('');
+  const [nameLoading, setNameLoading] = useState(false);
 
   const handleGenerate = async (e) => {
     e.preventDefault();
@@ -24,14 +24,25 @@ function AIGenerateTab() {
 
     setLoading(true);
     setGeneratedCards([]);
-    setShowDeckName(false);
     setDeckName('');
+    setNameLoading(true);
     try {
       const cards = await generateCardsFromText(sourceText);
       setGeneratedCards(cards);
       setSourceTextForName(sourceText);
+
+      // Automatically generate deck name
+      try {
+        const nameData = await generateDeckName(sourceText);
+        setDeckName(nameData.name);
+      } catch {
+        setDeckName('Generated Cards');
+      } finally {
+        setNameLoading(false);
+      }
     } catch (err) {
       setError(err.message);
+      setNameLoading(false);
     } finally {
       setLoading(false);
     }
@@ -45,37 +56,39 @@ function AIGenerateTab() {
     setPdfLoading(true);
     setError('');
     setGeneratedCards([]);
-    setShowDeckName(false);
     setDeckName('');
+    setNameLoading(true);
 
     try {
       const cards = await uploadPDF(file);
       setGeneratedCards(cards);
       setSourceTextForName(file.name.replace('.pdf', ''));
+
+      // Automatically generate deck name from filename
+      try {
+        const nameData = await generateDeckName(file.name.replace('.pdf', ''));
+        setDeckName(nameData.name);
+      } catch {
+        setDeckName(file.name.replace('.pdf', ''));
+      } finally {
+        setNameLoading(false);
+      }
     } catch (err) {
       setError(err.message);
       setPdfFile(null);
+      setNameLoading(false);
     } finally {
       setPdfLoading(false);
-    }
-  };
-
-  const handleSuggestDeckName = async () => {
-    if (!sourceTextForName) return;
-    try {
-      const { generateDeckName } = await import('../services/api');
-      const data = await generateDeckName(sourceTextForName);
-      setDeckName(data.name);
-      setShowDeckName(true);
-    } catch (err) {
-      setDeckName('Generated Cards');
-      setShowDeckName(true);
     }
   };
 
   const handleSaveAll = async () => {
     if (!deckName.trim()) {
       alert('Please enter a deck name.');
+      return;
+    }
+    if (generatedCards.length === 0) {
+      alert('No cards to save.');
       return;
     }
 
@@ -85,13 +98,14 @@ function AIGenerateTab() {
       for (const card of generatedCards) {
         await createCard({ ...card, deck_id: deck.id });
       }
+      const count = generatedCards.length;
       setGeneratedCards([]);
       setSourceText('');
       setPdfFile(null);
       setDeckName('');
-      setShowDeckName(false);
+      setSourceTextForName('');
       setError('');
-      alert(`Deck "${deckName}" created with ${generatedCards.length} cards!`);
+      alert(`Deck "${deckName}" created with ${count} cards!`);
     } catch (err) {
       setError('Failed to save. ' + err.message);
     } finally {
@@ -153,22 +167,17 @@ function AIGenerateTab() {
           <h3>Generated Cards ({generatedCards.length})</h3>
 
           {/* Deck Name Input */}
-          {!showDeckName ? (
-            <button className="btn-secondary" onClick={handleSuggestDeckName} style={{ marginBottom: 16 }}>
-              ✨ Suggest Deck Name
-            </button>
-          ) : (
-            <div className="deck-name-section">
-              <label htmlFor="deck-name">Deck Name</label>
-              <input
-                id="deck-name"
-                type="text"
-                value={deckName}
-                onChange={(e) => setDeckName(e.target.value)}
-                placeholder="Enter deck name..."
-              />
-            </div>
-          )}
+          <div className="deck-name-section">
+            <label htmlFor="deck-name">Deck Name</label>
+            <input
+              id="deck-name"
+              type="text"
+              value={deckName}
+              onChange={(e) => setDeckName(e.target.value)}
+              placeholder="Enter deck name..."
+            />
+            {nameLoading && <span className="deck-name-loading">Generating name...</span>}
+          </div>
 
           <div className="generated-cards-list">
             {generatedCards.map((card, index) => (
@@ -179,11 +188,9 @@ function AIGenerateTab() {
             ))}
           </div>
 
-          {showDeckName && deckName.trim() && (
-            <button className="btn-success" onClick={handleSaveAll} disabled={saving}>
-              {saving ? 'Creating Deck & Saving...' : 'Save Cards to New Deck'}
-            </button>
-          )}
+          <button className="btn-success" onClick={handleSaveAll} disabled={saving || !deckName.trim()}>
+            {saving ? 'Creating Deck & Saving...' : 'Save Cards to New Deck'}
+          </button>
         </div>
       )}
     </div>
