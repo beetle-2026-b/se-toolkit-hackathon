@@ -291,13 +291,14 @@ Return ONLY the answer, with no additional text, quotes, or formatting."""
             'dr rose': 'derrick rose',
             'magic': 'earvin johnson',
             'shaq': "shaquille o'neal",
+            'o neal': "shaquille o'neal",
+            "shaquille o'neal": "shaquille o'neal",
             'king james': 'lebron james',
             'bron': 'lebron james',
             'lj': 'lebron james',
-            'stockton': 'john stockton',
+            'lebron': 'lebron james',
             'bird': 'larry bird',
             'jordan': 'michael jordan',
-            'mike': 'michael jordan',
             'mj': 'michael jordan',
             'kobe': 'kobe bryant',
             'kb': 'kobe bryant',
@@ -305,16 +306,16 @@ Return ONLY the answer, with no additional text, quotes, or formatting."""
             'cp3': 'chris paul',
             'giannis': 'giannis antetokounmpo',
             'greek freak': 'giannis antetokounmpo',
-            'alou': 'kareem abdul-jabbar',
-            'skyhook': 'kareem abdul-jabbar',
             'kareem': 'kareem abdul-jabbar',
+            'curry': 'stephen curry',
+            'stephen curry': 'stephen curry',
         }
 
         # Check known nicknames
-        if ua in exact_nicknames and exact_nicknames[ua] in ca:
-            return VerdictEvaluation(verdict="Correct", comment="Correct.")
-        if ca in exact_nicknames.values() and ua == exact_nicknames.get(ua, ua):
-            return VerdictEvaluation(verdict="Correct", comment="Correct.")
+        if ua in exact_nicknames:
+            nickname_value = exact_nicknames[ua].lower()
+            if nickname_value == ca or nickname_value in ca or ca in nickname_value:
+                return VerdictEvaluation(verdict="Correct", comment="Correct.")
 
         # Exact match
         if ua == ca:
