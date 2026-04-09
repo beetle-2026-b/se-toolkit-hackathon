@@ -282,20 +282,78 @@ Return ONLY the answer, with no additional text, quotes, or formatting."""
         ca = correct_answer.strip().lower()
         ua = user_answer.strip().lower()
 
-        # Direct match check first
-        if ua == ca or ua in ca or ca in ua:
-            return VerdictEvaluation(
-                verdict="Correct",
-                comment="Correct."
-            )
+        # Known abbreviations and nicknames that are exact equivalents
+        exact_nicknames = {
+            'cavs': 'cleveland cavaliers',
+            'cavaliers': 'cleveland cavaliers',
+            'cleveland': 'cleveland cavaliers',
+            'd rose': 'derrick rose',
+            'dr rose': 'derrick rose',
+            'magic': 'earvin johnson',
+            'shaq': "shaquille o'neal",
+            'king james': 'lebron james',
+            'bron': 'lebron james',
+            'lj': 'lebron james',
+            'stockton': 'john stockton',
+            'bird': 'larry bird',
+            'jordan': 'michael jordan',
+            'mike': 'michael jordan',
+            'mj': 'michael jordan',
+            'kobe': 'kobe bryant',
+            'kb': 'kobe bryant',
+            'kd': 'kevin durant',
+            'cp3': 'chris paul',
+            'giannis': 'giannis antetokounmpo',
+            'greek freak': 'giannis antetokounmpo',
+            'alou': 'kareem abdul-jabbar',
+            'skyhook': 'kareem abdul-jabbar',
+            'kareem': 'kareem abdul-jabbar',
+        }
 
+        # Check known nicknames
+        if ua in exact_nicknames and exact_nicknames[ua] in ca:
+            return VerdictEvaluation(verdict="Correct", comment="Correct.")
+        if ca in exact_nicknames.values() and ua == exact_nicknames.get(ua, ua):
+            return VerdictEvaluation(verdict="Correct", comment="Correct.")
+
+        # Exact match
+        if ua == ca:
+            return VerdictEvaluation(verdict="Correct", comment="Correct.")
+
+        # Partial match (user answer is a substring but not a known nickname)
+        # e.g., "john" vs "john stockton" → Partially correct (not Correct)
+        if ua in ca or ca in ua:
+            # Check if it's a meaningful partial match
+            ua_words = set(ua.split())
+            ca_words = set(ca.split())
+            matched_words = ua_words & ca_words
+            
+            # Only Correct if user provided ALL key words
+            if matched_words and len(matched_words) == len(ca_words):
+                return VerdictEvaluation(
+                    verdict="Correct",
+                    comment="Correct."
+                )
+            # User provided only part of the name/answer
+            elif matched_words:
+                return VerdictEvaluation(
+                    verdict="Partially correct",
+                    comment=f"Partially correct. The correct answer is: {correct_answer}."
+                )
+            else:
+                return VerdictEvaluation(
+                    verdict="Partially correct",
+                    comment=f"Partially correct. The correct answer is: {correct_answer}."
+                )
+
+        # No direct match - use AI
         prompt = f"""Compare the student's answer with the correct answer. Determine if they mean the same thing.
 
 Correct answer: {correct_answer}
 Student's answer: {user_answer}
 
 Rules:
-- If the student's answer means the same thing as the correct answer (synonyms, abbreviations, nicknames, different wording but same meaning) → verdict: "Correct", comment: "Correct."
+- If the student's answer means the same thing (synonyms, abbreviations, nicknames, same concept) → verdict: "Correct", comment: "Correct."
 - If the student's answer has some correct elements but is incomplete or partially wrong → verdict: "Partially correct", comment: "Partially correct. The correct answer is: {correct_answer}."
 - If the student's answer is wrong or irrelevant → verdict: "Incorrect", comment: "Incorrect. The correct answer is: {correct_answer}."
 
