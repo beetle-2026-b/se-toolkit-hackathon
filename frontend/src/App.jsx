@@ -88,7 +88,7 @@ function App() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'cards':
-        return <CardsTab cards={cards} setCards={setCards} decks={decks} selectedDeckId={selectedDeckId} />;
+        return <CardsTab decks={decks} setDecks={setDecks} />;
       case 'ai-generate':
         return <AIGenerateTab setCards={setCards} />;
       case 'study':

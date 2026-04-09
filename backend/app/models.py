@@ -18,7 +18,7 @@ class Card(Base):
     id = Column(Integer, primary_key=True, index=True)
     question = Column(String, nullable=False)
     answer = Column(String, nullable=False)
-    deck_id = Column(Integer, ForeignKey("decks.id"), nullable=True)
+    deck_id = Column(Integer, ForeignKey("decks.id"), nullable=False)
     box = Column(Integer, default=1)
     next_review_date = Column(Date, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

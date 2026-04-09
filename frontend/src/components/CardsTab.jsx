@@ -1,13 +1,92 @@
 import React, { useState } from 'react';
 import { getCards, createCard, updateCard, deleteCard, generateAnswer } from '../services/api';
 
-function CardsTab({ cards, setCards, decks, selectedDeckId }) {
+function CardsTab({ decks, setDecks }) {
+  const [phase, setPhase] = useState('select');
+  const [currentDeckId, setCurrentDeckId] = useState(null);
+  const [cards, setCards] = useState([]);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
-  const [deckId, setDeckId] = useState(selectedDeckId || '');
   const [editingCardId, setEditingCardId] = useState(null);
   const [error, setError] = useState('');
   const [generatingAnswer, setGeneratingAnswer] = useState(false);
+
+  const openDeck = async (deckId) => {
+    setCurrentDeckId(deckId);
+    setPhase('browsing');
+    setEditingCardId(null);
+    setQuestion('');
+    setAnswer('');
+    setError('');
+    try {
+      const cardsData = await getCards(deckId);
+      setCards(cardsData);
+    } catch (err) {
+      setError('Failed to load cards.');
+    }
+  };
+
+  const goBack = () => {
+    setPhase('select');
+    setCurrentDeckId(null);
+    setCards([]);
+    setQuestion('');
+    setAnswer('');
+    setEditingCardId(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!question.trim() || !answer.trim()) return;
+
+    try {
+      if (editingCardId) {
+        await updateCard(editingCardId, { question, answer, deck_id: currentDeckId });
+        setEditingCardId(null);
+      } else {
+        await createCard({ question, answer, deck_id: currentDeckId });
+      }
+      setQuestion('');
+      setAnswer('');
+      const updatedCards = await getCards(currentDeckId);
+      setCards(updatedCards);
+      // Update deck card count
+      setDecks(prev => prev.map(d =>
+        d.id === currentDeckId ? { ...d, card_count: updatedCards.length } : d
+      ));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleEdit = (card) => {
+    setQuestion(card.question);
+    setAnswer(card.answer);
+    setEditingCardId(card.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (cardId) => {
+    if (!confirm('Are you sure you want to delete this card?')) return;
+    try {
+      await deleteCard(cardId);
+      const updatedCards = await getCards(currentDeckId);
+      setCards(updatedCards);
+      setDecks(prev => prev.map(d =>
+        d.id === currentDeckId ? { ...d, card_count: updatedCards.length } : d
+      ));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleCancel = () => {
+    setQuestion('');
+    setAnswer('');
+    setEditingCardId(null);
+  };
 
   const handleGenerateAnswer = async () => {
     if (!question.trim()) {
@@ -26,74 +105,58 @@ function CardsTab({ cards, setCards, decks, selectedDeckId }) {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    if (!question.trim() || !answer.trim()) return;
-
-    try {
-      if (editingCardId) {
-        await updateCard(editingCardId, { question, answer, deck_id: deckId || null });
-        setEditingCardId(null);
-      } else {
-        await createCard({ question, answer, deck_id: deckId || null });
-      }
-      setQuestion('');
-      setAnswer('');
-      const updatedCards = await getCards();
-      setCards(updatedCards);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleEdit = (card) => {
-    setQuestion(card.question);
-    setAnswer(card.answer);
-    setEditingCardId(card.id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDelete = async (cardId) => {
-    if (!confirm('Are you sure you want to delete this card?')) return;
-    try {
-      await deleteCard(cardId);
-      const updatedCards = await getCards();
-      setCards(updatedCards);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleCancel = () => {
-    setQuestion('');
-    setAnswer('');
-    setEditingCardId(null);
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString();
   };
 
-  const getDeckName = (deckId) => {
-    if (!deckId) return '';
-    const deck = decks.find(d => d.id === deckId);
-    return deck ? deck.name : '';
-  };
+  const currentDeck = decks.find(d => d.id === currentDeckId);
 
+  // Deck selection screen
+  if (phase === 'select') {
+    return (
+      <div className="cards-container">
+        <h2>My Cards</h2>
+        <p className="subtitle">Choose a deck to view or add cards</p>
+        <div className="theme-selection">
+          {decks.length === 0 ? (
+            <p className="placeholder-text">No decks created yet. Create a deck first!</p>
+          ) : (
+            decks.map(deck => (
+              <button
+                key={deck.id}
+                className="theme-btn"
+                onClick={() => openDeck(deck.id)}
+              >
+                <span className="theme-name">{deck.name}</span>
+                <span className="theme-count">{deck.card_count} cards</span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Browsing cards in a deck
   return (
-    <div>
+    <div className="cards-container">
+      <div className="cards-header">
+        <button className="btn-small" onClick={goBack}>← Back to Decks</button>
+        <h2>{currentDeck?.name || 'Cards'}</h2>
+        <span className="card-count-badge">{cards.length} cards</span>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
+
       <div className="card-form-container">
-        <h2>{editingCardId ? 'Edit Card' : 'Create New Card'}</h2>
-        {error && <div className="error-message">{error}</div>}
+        <h3>{editingCardId ? 'Edit Card' : 'Add New Card'}</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="question">Question</label>
             <textarea
               id="question"
-              rows="3"
+              rows="2"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               required
@@ -105,7 +168,7 @@ function CardsTab({ cards, setCards, decks, selectedDeckId }) {
             <div className="answer-field">
               <textarea
                 id="answer"
-                rows="3"
+                rows="2"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 required
@@ -117,22 +180,9 @@ function CardsTab({ cards, setCards, decks, selectedDeckId }) {
                 onClick={handleGenerateAnswer}
                 disabled={generatingAnswer}
               >
-                {generatingAnswer ? 'Generating...' : '✨ Generate Answer'}
+                {generatingAnswer ? 'Generating...' : '✨ Generate'}
               </button>
             </div>
-          </div>
-          <div className="form-group">
-            <label htmlFor="deck-select">Deck</label>
-            <select
-              id="deck-select"
-              value={deckId}
-              onChange={(e) => setDeckId(e.target.value)}
-            >
-              <option value="">No Deck (General)</option>
-              {decks.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
           </div>
           <div className="form-actions">
             <button type="submit" className="btn-primary">
@@ -148,9 +198,8 @@ function CardsTab({ cards, setCards, decks, selectedDeckId }) {
       </div>
 
       <div className="cards-list">
-        <h2>All Cards ({cards.length})</h2>
         {cards.length === 0 ? (
-          <p className="placeholder-text">No cards yet. Create your first card above!</p>
+          <p className="placeholder-text">No cards yet. Add your first card above!</p>
         ) : (
           <div id="cards-container">
             {cards.map(card => (
@@ -158,12 +207,7 @@ function CardsTab({ cards, setCards, decks, selectedDeckId }) {
                 <div className="card-item-content">
                   <div className="question">{card.question}</div>
                   <div className="answer">{card.answer}</div>
-                  <div className="meta">
-                    Box: {card.box} | Created: {formatDate(card.created_at)}
-                    {getDeckName(card.deck_id) && (
-                      <span className="deck-tag">{getDeckName(card.deck_id)}</span>
-                    )}
-                  </div>
+                  <div className="meta">Box: {card.box} | Created: {formatDate(card.created_at)}</div>
                 </div>
                 <div className="card-actions">
                   <button className="edit-btn" onClick={() => handleEdit(card)}>Edit</button>

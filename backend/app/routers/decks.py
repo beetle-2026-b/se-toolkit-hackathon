@@ -133,8 +133,8 @@ def delete_deck(deck_id: int, db: Session = Depends(get_db)):
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
 
-    # Unassign cards from this deck (don't delete them)
-    db.query(Card).filter(Card.deck_id == deck_id).update({"deck_id": None})
+    # Delete all cards in this deck
+    db.query(Card).filter(Card.deck_id == deck_id).delete()
 
     db.delete(deck)
     db.commit()

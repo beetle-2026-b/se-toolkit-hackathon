@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from app.database import get_db
-from app.models import Card
+from app.models import Card, Deck
 
 router = APIRouter()
 
@@ -12,7 +12,7 @@ router = APIRouter()
 class CardCreate(BaseModel):
     question: str
     answer: str
-    deck_id: Optional[int] = None
+    deck_id: int  # Required - no unassigned cards
 
 
 class CardUpdate(BaseModel):
@@ -48,7 +48,12 @@ class CardResponse(BaseModel):
 def create_card(card: CardCreate, db: Session = Depends(get_db)):
     if not card.question.strip() or not card.answer.strip():
         raise HTTPException(status_code=400, detail="Question and answer cannot be empty")
-    
+
+    # Verify deck exists
+    deck = db.query(Deck).filter(Deck.id == card.deck_id).first()
+    if not deck:
+        raise HTTPException(status_code=404, detail="Deck not found")
+
     db_card = Card(
         question=card.question,
         answer=card.answer,
