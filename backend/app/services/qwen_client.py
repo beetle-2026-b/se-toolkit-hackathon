@@ -279,40 +279,38 @@ Return ONLY the answer, with no additional text, quotes, or formatting."""
         return response.strip()
 
     async def evaluate_quiz_verdict(self, question: str, correct_answer: str, user_answer: str) -> VerdictEvaluation:
-        prompt = f"""You are evaluating a student's answer.
+        ca = correct_answer.strip().lower()
+        ua = user_answer.strip().lower()
 
-Question: {question}
-Correct Answer: {correct_answer}
-Student's Answer: {user_answer}
+        # Direct match check first
+        if ua == ca or ua in ca or ca in ua:
+            return VerdictEvaluation(
+                verdict="Correct",
+                comment="Correct."
+            )
 
-Determine if the student's answer is:
-- **Correct**: Means the same thing as the correct answer. Synonyms, abbreviations, nicknames all count (e.g., "cavs" = "Cavaliers", "rose" = "Derrick Rose").
-- **Partially correct**: Has some right elements but is incomplete, vague, or partially wrong.
-- **Incorrect**: Wrong, irrelevant, or "I don't know" type answers.
+        prompt = f"""Compare the student's answer with the correct answer. Determine if they mean the same thing.
 
-IMPORTANT: If the student's answer means the same thing as the correct answer (even with different words), mark it Correct.
+Correct answer: {correct_answer}
+Student's answer: {user_answer}
+
+Rules:
+- If the student's answer means the same thing as the correct answer (synonyms, abbreviations, nicknames, different wording but same meaning) → verdict: "Correct", comment: "Correct."
+- If the student's answer has some correct elements but is incomplete or partially wrong → verdict: "Partially correct", comment: "Partially correct. The correct answer is: {correct_answer}."
+- If the student's answer is wrong or irrelevant → verdict: "Incorrect", comment: "Incorrect. The correct answer is: {correct_answer}."
 
 Return ONLY valid JSON:
-{{
-  "verdict": "Correct",
-  "comment": "The correct answer is: {correct_answer}."
-}}
-
-For Partial: "Partially correct. You mentioned X, but the full answer is: {correct_answer}."
-For Incorrect: "Incorrect. The correct answer is: {correct_answer}."
-For Correct: "Correct."
-
-Return ONLY the JSON object."""
+{{"verdict": "Correct", "comment": "Correct."}}"""
 
         response = await self._make_request([
-            {"role": "system", "content": "You evaluate student answers as Correct, Partially correct, or Incorrect. You recognize synonyms, abbreviations, and equivalent terms. Always return valid JSON."},
+            {"role": "system", "content": "Compare student answers with correct answers. Recognize synonyms, abbreviations, and equivalent meanings. Return ONLY JSON."},
             {"role": "user", "content": prompt}
         ])
 
         if not response:
             return VerdictEvaluation(
                 verdict="Incorrect",
-                comment=f"The correct answer is: {correct_answer}."
+                comment=f"Incorrect. The correct answer is: {correct_answer}."
             )
 
         try:
@@ -328,15 +326,21 @@ Return ONLY the JSON object."""
             if verdict not in ("Correct", "Partially correct", "Incorrect"):
                 verdict = "Incorrect"
 
-            return VerdictEvaluation(
-                verdict=verdict,
-                comment=data.get("comment", f"The correct answer is: {correct_answer}.")
-            )
+            comment = data.get("comment", "")
+            if not comment:
+                if verdict == "Correct":
+                    comment = "Correct."
+                elif verdict == "Partially correct":
+                    comment = f"Partially correct. The correct answer is: {correct_answer}."
+                else:
+                    comment = f"Incorrect. The correct answer is: {correct_answer}."
+
+            return VerdictEvaluation(verdict=verdict, comment=comment)
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
             print(f"Failed to parse verdict response: {e}")
             return VerdictEvaluation(
                 verdict="Incorrect",
-                comment=f"The correct answer is: {correct_answer}."
+                comment=f"Incorrect. The correct answer is: {correct_answer}."
             )
 
 
