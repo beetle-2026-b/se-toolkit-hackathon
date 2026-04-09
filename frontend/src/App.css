@@ -652,6 +652,30 @@ header h1 {
   font-size: 0.85rem;
 }
 
+/* Delete Deck Section */
+.delete-deck-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e6ed;
+  text-align: center;
+}
+
+.btn-delete-deck {
+  background: none;
+  border: 2px solid #e74c3c;
+  color: #e74c3c;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-deck:hover {
+  background: #e74c3c;
+  color: white;
+}
+
 .generated-cards {
   margin-top: 24px;
 }

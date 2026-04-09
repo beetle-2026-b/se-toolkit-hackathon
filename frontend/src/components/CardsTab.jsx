@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getCards, createCard, updateCard, deleteCard, generateAnswer } from '../services/api';
+import { getCards, createCard, updateCard, deleteCard, generateAnswer, deleteDeck } from '../services/api';
 import DeckSelection from './DeckSelection';
 
 function CardsTab({ decks, setDecks }) {
@@ -114,6 +114,20 @@ function CardsTab({ decks, setDecks }) {
     }
   };
 
+  const handleDeleteDeck = async () => {
+    if (!currentDeckId) return;
+    const deck = decks.find(d => d.id === currentDeckId);
+    if (!confirm(`Delete "${deck?.name}" and all ${cards.length} cards in it? This cannot be undone.`)) return;
+
+    try {
+      await deleteDeck(currentDeckId);
+      setDecks(prev => prev.filter(d => d.id !== currentDeckId));
+      goBack();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString();
@@ -213,6 +227,14 @@ function CardsTab({ decks, setDecks }) {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {cards.length > 0 && (
+          <div className="delete-deck-section">
+            <button className="btn-delete-deck" onClick={handleDeleteDeck}>
+              🗑️ Delete Deck "{currentDeck?.name}"
+            </button>
           </div>
         )}
       </div>
