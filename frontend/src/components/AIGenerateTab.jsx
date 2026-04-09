@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { generateCardsFromText, uploadPDF, createDeck, createCard, generateDeckName } from '../services/api';
+import { generateCardsFromText, uploadPDF, createDeck, createCard, generateDeckName, generateAnswer } from '../services/api';
 
 function AIGenerateTab({ onDeckCreated }) {
   const [sourceText, setSourceText] = useState('');
@@ -16,6 +16,12 @@ function AIGenerateTab({ onDeckCreated }) {
   const [editQuestion, setEditQuestion] = useState('');
   const [editAnswer, setEditAnswer] = useState('');
 
+  // Add card form
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newQuestion, setNewQuestion] = useState('');
+  const [newAnswer, setNewAnswer] = useState('');
+  const [generatingAnswer, setGeneratingAnswer] = useState(false);
+
   const handleGenerate = async (e) => {
     e.preventDefault();
     setError('');
@@ -30,6 +36,7 @@ function AIGenerateTab({ onDeckCreated }) {
     setDeckName('');
     setNameLoading(true);
     setEditingIndex(null);
+    setShowAddForm(false);
     try {
       const cards = await generateCardsFromText(sourceText);
       setGeneratedCards(cards);
@@ -62,6 +69,7 @@ function AIGenerateTab({ onDeckCreated }) {
     setDeckName('');
     setNameLoading(true);
     setEditingIndex(null);
+    setShowAddForm(false);
 
     try {
       const cards = await uploadPDF(file);
@@ -105,6 +113,52 @@ function AIGenerateTab({ onDeckCreated }) {
     setEditingIndex(null);
   };
 
+  const handleGenerateAnswer = async () => {
+    if (!newQuestion.trim()) {
+      alert('Please type a question first.');
+      return;
+    }
+    setGeneratingAnswer(true);
+    setError('');
+    try {
+      const data = await generateAnswer(newQuestion);
+      setNewAnswer(data.answer);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGeneratingAnswer(false);
+    }
+  };
+
+  const handleAddCard = () => {
+    if (!newQuestion.trim() || !newAnswer.trim()) {
+      alert('Please fill in both question and answer.');
+      return;
+    }
+    setGeneratedCards(prev => [...prev, { question: newQuestion, answer: newAnswer }]);
+    setNewQuestion('');
+    setNewAnswer('');
+    setShowAddForm(false);
+  };
+
+  const handleGenerateMore = async () => {
+    if (!sourceTextForName) return;
+
+    setLoading(true);
+    setError('');
+    try {
+      const cards = await generateCardsFromText(sourceTextForName);
+      // Append new cards, avoiding duplicates
+      const existing = new Set(generatedCards.map(c => c.question.toLowerCase()));
+      const newCards = cards.filter(c => !existing.has(c.question.toLowerCase()));
+      setGeneratedCards(prev => [...prev, ...newCards]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveAll = async () => {
     if (!deckName.trim()) {
       alert('Please enter a deck name.');
@@ -128,6 +182,7 @@ function AIGenerateTab({ onDeckCreated }) {
       setDeckName('');
       setSourceTextForName('');
       setError('');
+      setShowAddForm(false);
 
       if (onDeckCreated) onDeckCreated();
 
@@ -240,6 +295,58 @@ function AIGenerateTab({ onDeckCreated }) {
                 )}
               </div>
             ))}
+          </div>
+
+          {/* Add New Card Form */}
+          {showAddForm && (
+            <div className="add-card-form">
+              <h4>Add New Card</h4>
+              <div className="form-group">
+                <label htmlFor="new-q">Question</label>
+                <input
+                  id="new-q"
+                  type="text"
+                  value={newQuestion}
+                  onChange={(e) => setNewQuestion(e.target.value)}
+                  placeholder="Enter question..."
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="new-a">Answer</label>
+                <div className="answer-field">
+                  <textarea
+                    id="new-a"
+                    rows="2"
+                    value={newAnswer}
+                    onChange={(e) => setNewAnswer(e.target.value)}
+                    placeholder="Enter answer or generate it..."
+                  />
+                  <button
+                    type="button"
+                    className="btn-ai-generate"
+                    onClick={handleGenerateAnswer}
+                    disabled={generatingAnswer}
+                  >
+                    {generatingAnswer ? 'Generating...' : '✨ Generate'}
+                  </button>
+                </div>
+              </div>
+              <div className="add-card-actions">
+                <button className="btn-small btn-success" onClick={handleAddCard}>Add Card</button>
+                <button className="btn-small btn-secondary" onClick={() => setShowAddForm(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          <div className="generate-actions">
+            {!showAddForm && (
+              <button className="btn-secondary" onClick={() => setShowAddForm(true)}>
+                + Add New Card
+              </button>
+            )}
+            <button className="btn-secondary" onClick={handleGenerateMore} disabled={loading || !sourceTextForName}>
+              {loading ? 'Generating...' : '✨ Generate More Cards'}
+            </button>
           </div>
 
           <button className="btn-success" onClick={handleSaveAll} disabled={saving || !deckName.trim()}>
