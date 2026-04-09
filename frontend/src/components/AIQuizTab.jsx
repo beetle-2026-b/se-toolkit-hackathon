@@ -7,6 +7,7 @@ function AIQuizTab({ decks }) {
   const [quizCards, setQuizCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
+  const [lastUserAnswer, setLastUserAnswer] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,8 +52,11 @@ function AIQuizTab({ decks }) {
 
       setResult({
         ...resultData,
-        correctAnswer: card.answer
+        correctAnswer: card.answer,
+        userAnswer: userAnswer
       });
+
+      setLastUserAnswer(userAnswer);
 
       setSessionStats(prev => {
         let category;
@@ -197,6 +201,16 @@ function AIQuizTab({ decks }) {
         ) : (
           <>
             <div className="verdict-result">
+              <div className="answers-comparison">
+                <div className="answer-row correct">
+                  <span className="answer-label">Correct:</span>
+                  <span className="answer-text">{result.correctAnswer}</span>
+                </div>
+                <div className="answer-row user">
+                  <span className="answer-label">Yours:</span>
+                  <span className="answer-text">{lastUserAnswer}</span>
+                </div>
+              </div>
               <div className="verdict-badge" style={{ borderColor: verdictColor }}>
                 <span className="verdict-text" style={{ color: verdictColor }}>
                   {result.verdict}
