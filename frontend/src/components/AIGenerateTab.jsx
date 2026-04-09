@@ -139,34 +139,6 @@ function AIGenerateTab({ onDeckCreated }) {
     setShowAddForm(false);
   };
 
-  const handleGenerateMore = async () => {
-    if (!sourceTextForName) return;
-    setLoading(true);
-    setError('');
-    try {
-      const existingQuestions = generatedCards.map(c => c.question);
-      const res = await fetch('/api/generate-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: sourceTextForName, existing_questions: existingQuestions })
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || 'Failed to generate more cards');
-      }
-      const newCards = await res.json();
-      if (newCards.length === 0) {
-        setError('All key concepts from this source are already covered.');
-      } else {
-        setGeneratedCards(prev => [...prev, ...newCards]);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSaveAll = async () => {
     if (!deckName.trim()) {
       alert('Please enter a deck name.');
@@ -352,9 +324,6 @@ function AIGenerateTab({ onDeckCreated }) {
                 + Add New Card
               </button>
             )}
-            <button className="btn-secondary" onClick={handleGenerateMore} disabled={loading || !sourceTextForName}>
-              {loading ? 'Generating...' : '✨ Generate More Cards'}
-            </button>
           </div>
 
           <button className="btn-success" onClick={handleSaveAll} disabled={saving || !deckName.trim()}>
