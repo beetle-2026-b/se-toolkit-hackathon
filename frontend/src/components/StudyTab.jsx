@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { selfRateAnswer } from '../services/api';
+import { getNextStudyCard, rateAnswer, generateHint } from '../services/api';
+import DeckSelection from './DeckSelection';
 
-function StudyTab({ decks, selectedDeckId, onRatingComplete }) {
+function StudyTab({ decks, selectedDeckId }) {
   const [phase, setPhase] = useState('select'); // 'select' | 'studying' | 'done'
-  const [deckId, setDeckId] = useState(selectedDeckId);
+  const [deckId, setDeckId] = useState(null);
   const [deckCards, setDeckCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [stats, setStats] = useState({ correct: 0, partial: 0, incorrect: 0 });
+  const [error, setError] = useState('');
 
   const startSession = (id) => {
     if (!id) return;
@@ -16,19 +18,14 @@ function StudyTab({ decks, selectedDeckId, onRatingComplete }) {
     setCurrentIndex(0);
     setRevealed(false);
     setStats({ correct: 0, partial: 0, incorrect: 0 });
-    // Load cards for this deck
-    const deck = decks.find(d => d.id === id);
-    if (deck && deck.card_count > 0) {
-      // We'll fetch cards via API
-      fetch(`/api/cards?deck_id=${id}`)
-        .then(r => r.json())
-        .then(cards => {
-          const shuffled = [...cards].sort(() => Math.random() - 0.5);
-          setDeckCards(shuffled);
-        });
-    } else {
-      setDeckCards([]);
-    }
+    setError('');
+
+    fetch(`/api/cards?deck_id=${id}`)
+      .then(r => r.json())
+      .then(cards => {
+        const shuffled = [...cards].sort(() => Math.random() - 0.5);
+        setDeckCards(shuffled);
+      });
   };
 
   const handleRate = async (rating) => {
@@ -36,9 +33,9 @@ function StudyTab({ decks, selectedDeckId, onRatingComplete }) {
     if (!card) return;
 
     try {
-      await selfRateAnswer(card.id, rating);
+      await rateAnswer(card.id, rating === 'correct' || rating === 'partial');
     } catch (err) {
-      console.error('Error rating:', err);
+      setError('Error rating answer.');
     }
 
     setStats(prev => ({
@@ -55,7 +52,6 @@ function StudyTab({ decks, selectedDeckId, onRatingComplete }) {
   };
 
   const handleNext = () => {
-    // Skip without rating - just mark as incorrect for stats
     if (currentIndex + 1 >= deckCards.length) {
       setPhase('done');
     } else {
@@ -66,49 +62,38 @@ function StudyTab({ decks, selectedDeckId, onRatingComplete }) {
 
   const handleFinish = () => {
     setPhase('select');
-    if (onRatingComplete) onRatingComplete();
+  };
+
+  const getPercentage = (count) => {
+    const total = stats.correct + stats.partial + stats.incorrect;
+    if (total === 0) return 0;
+    return Math.round((count / total) * 100);
   };
 
   const currentCard = deckCards[currentIndex];
-  const totalAnswered = stats.correct + stats.partial + stats.incorrect;
 
-  const getPercentage = (count) => {
-    if (totalAnswered === 0) return 0;
-    return Math.round((count / totalAnswered) * 100);
-  };
-
+  // Deck selection
   if (phase === 'select') {
     return (
       <div className="study-container">
         <h2>Study Mode</h2>
-        <p className="subtitle">Choose a theme to study from</p>
-        <div className="theme-selection">
-          {decks.length === 0 ? (
-            <p className="placeholder-text">No decks created yet. Create some decks first!</p>
-          ) : (
-            decks.map(deck => (
-              <button
-                key={deck.id}
-                className="theme-btn"
-                onClick={() => startSession(deck.id)}
-              >
-                <span className="theme-name">{deck.name}</span>
-                <span className="theme-count">{deck.card_count} cards</span>
-              </button>
-            ))
-          )}
-        </div>
+        <p className="subtitle">Choose a deck to study from</p>
+        <DeckSelection
+          decks={decks}
+          onSelectDeck={startSession}
+        />
       </div>
     );
   }
 
+  // Completion screen
   if (phase === 'done') {
     return (
       <div className="study-container">
         <div className="completion-screen">
-          <h2>All Done!</h2>
+          <h2>Session Complete!</h2>
           <p className="completion-text">
-            You answered all {deckCards.length} questions from this theme.
+            You reviewed all {deckCards.length} cards from this deck.
           </p>
           <div className="session-stats">
             <div className="session-stat correct">
@@ -128,12 +113,8 @@ function StudyTab({ decks, selectedDeckId, onRatingComplete }) {
             </div>
           </div>
           <div className="completion-actions">
-            <button className="btn-primary" onClick={() => startSession(deckId)}>
-              Study This Theme Again
-            </button>
-            <button className="btn-secondary" onClick={handleFinish}>
-              Choose Different Theme
-            </button>
+            <button className="btn-primary" onClick={() => startSession(deckId)}>Study Again</button>
+            <button className="btn-secondary" onClick={handleFinish}>Choose Deck</button>
           </div>
         </div>
       </div>
@@ -141,56 +122,40 @@ function StudyTab({ decks, selectedDeckId, onRatingComplete }) {
   }
 
   if (!currentCard) {
-    return (
-      <div className="study-container">
-        <p className="placeholder-text">Loading cards...</p>
-      </div>
-    );
+    return <div className="study-container"><p className="placeholder-text">Loading...</p></div>;
   }
 
   return (
     <div className="study-container">
       <div className="study-header">
-        <span className="study-progress">
-          {currentIndex + 1} / {deckCards.length}
-        </span>
-        <button className="btn-small" onClick={handleFinish}>Change Theme</button>
+        <span className="study-progress">{currentIndex + 1} / {deckCards.length}</span>
+        <button className="btn-small" onClick={handleFinish}>Change Deck</button>
       </div>
 
       <div className="flashcard">
         <div className="question">{currentCard.question}</div>
-        {revealed && (
-          <div className="answer">{currentCard.answer}</div>
-        )}
+        {revealed && <div className="answer">{currentCard.answer}</div>}
       </div>
+
+      {error && <div className="error-message">{error}</div>}
 
       <div className="study-controls">
         {!revealed ? (
           <>
-            <button className="btn-secondary" onClick={handleNext}>
-              Next
-            </button>
-            <button className="btn-primary" onClick={() => setRevealed(true)}>
-              Show Answer
-            </button>
+            <button className="btn-secondary" onClick={handleNext}>Next</button>
+            <button className="btn-primary" onClick={() => setRevealed(true)}>Show Answer</button>
           </>
         ) : (
           <>
-            <button className="btn-success" onClick={() => handleRate('correct')}>
-              ✓ Correct
-            </button>
-            <button className="btn-warning" onClick={() => handleRate('partial')}>
-              ◐ Partially Correct
-            </button>
-            <button className="btn-danger" onClick={() => handleRate('incorrect')}>
-              ✗ Incorrect
-            </button>
+            <button className="btn-success" onClick={() => handleRate('correct')}>✓ Correct</button>
+            <button className="btn-warning" onClick={() => handleRate('partial')}>◐ Partially Correct</button>
+            <button className="btn-danger" onClick={() => handleRate('incorrect')}>✗ Incorrect</button>
           </>
         )}
       </div>
 
       {/* Live Stats Below */}
-      {totalAnswered > 0 && (
+      {(stats.correct + stats.partial + stats.incorrect) > 0 && (
         <div className="live-stats">
           <h3>Session Stats</h3>
           <div className="live-stats-grid">
@@ -211,18 +176,9 @@ function StudyTab({ decks, selectedDeckId, onRatingComplete }) {
             </div>
           </div>
           <div className="live-stats-bar">
-            <div
-              className="live-stat-bar-segment correct"
-              style={{ width: `${getPercentage(stats.correct)}%` }}
-            />
-            <div
-              className="live-stat-bar-segment partial"
-              style={{ width: `${getPercentage(stats.partial)}%` }}
-            />
-            <div
-              className="live-stat-bar-segment incorrect"
-              style={{ width: `${getPercentage(stats.incorrect)}%` }}
-            />
+            <div className="live-stat-bar-segment correct" style={{ width: `${getPercentage(stats.correct)}%` }} />
+            <div className="live-stat-bar-segment partial" style={{ width: `${getPercentage(stats.partial)}%` }} />
+            <div className="live-stat-bar-segment incorrect" style={{ width: `${getPercentage(stats.incorrect)}%` }} />
           </div>
         </div>
       )}

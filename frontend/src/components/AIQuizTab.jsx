@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { checkQuizAnswer } from '../services/api';
+import DeckSelection from './DeckSelection';
 
 function AIQuizTab({ decks }) {
-  const [deckId, setDeckId] = useState(null);
   const [phase, setPhase] = useState('select');
+  const [deckId, setDeckId] = useState(null);
   const [quizCards, setQuizCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
@@ -20,6 +21,7 @@ function AIQuizTab({ decks }) {
     setCurrentIndex(0);
     setResult(null);
     setUserAnswer('');
+    setLastUserAnswer('');
     setError('');
     setSessionStats({ correct: 0, partial: 0, incorrect: 0 });
 
@@ -83,6 +85,7 @@ function AIQuizTab({ decks }) {
       setCurrentIndex(prev => prev + 1);
       setResult(null);
       setUserAnswer('');
+      setLastUserAnswer('');
       setError('');
     }
   };
@@ -99,28 +102,16 @@ function AIQuizTab({ decks }) {
 
   const currentCard = quizCards[currentIndex];
 
-  // Theme selection
+  // Deck selection
   if (phase === 'select') {
     return (
       <div className="ai-quiz-container">
         <h2>AI Quiz Mode</h2>
-        <p className="subtitle">Type your answer and let AI evaluate it!</p>
-        <div className="theme-selection">
-          {decks.length === 0 ? (
-            <p className="placeholder-text">No decks created yet. Create some decks first!</p>
-          ) : (
-            decks.map(deck => (
-              <button
-                key={deck.id}
-                className="theme-btn"
-                onClick={() => startSession(deck.id)}
-              >
-                <span className="theme-name">{deck.name}</span>
-                <span className="theme-count">{deck.card_count} cards</span>
-              </button>
-            ))
-          )}
-        </div>
+        <p className="subtitle">Choose a deck to quiz yourself on</p>
+        <DeckSelection
+          decks={decks}
+          onSelectDeck={startSession}
+        />
       </div>
     );
   }
@@ -128,13 +119,12 @@ function AIQuizTab({ decks }) {
   // Completion screen
   if (phase === 'done') {
     const deck = decks.find(d => d.id === deckId);
-    const total = sessionStats.correct + sessionStats.partial + sessionStats.incorrect;
     return (
       <div className="ai-quiz-container">
         <div className="completion-screen">
           <h2>Quiz Complete!</h2>
           <p className="completion-text">
-            You answered all {quizCards.length} questions from {deck?.name || 'this theme'}.
+            You answered all {quizCards.length} questions from {deck?.name || 'this deck'}.
           </p>
           <div className="session-stats">
             <div className="session-stat correct">
@@ -155,7 +145,7 @@ function AIQuizTab({ decks }) {
           </div>
           <div className="completion-actions">
             <button className="btn-primary" onClick={() => startSession(deckId)}>Quiz Again</button>
-            <button className="btn-secondary" onClick={handleFinish}>Choose Theme</button>
+            <button className="btn-secondary" onClick={handleFinish}>Choose Deck</button>
           </div>
         </div>
       </div>
@@ -173,7 +163,7 @@ function AIQuizTab({ decks }) {
     <div className="ai-quiz-container">
       <div className="study-header">
         <span className="study-progress">{currentIndex + 1} / {quizCards.length}</span>
-        <button className="btn-small" onClick={handleFinish}>Change Theme</button>
+        <button className="btn-small" onClick={handleFinish}>Change Deck</button>
       </div>
 
       <div className="flashcard">

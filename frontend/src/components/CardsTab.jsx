@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { getCards, createCard, updateCard, deleteCard, generateAnswer } from '../services/api';
+import DeckSelection from './DeckSelection';
 
 function CardsTab({ decks, setDecks }) {
-  const [phase, setPhase] = useState('select');
+  const [phase, setPhase] = useState('select'); // 'select' | 'browsing'
   const [currentDeckId, setCurrentDeckId] = useState(null);
   const [cards, setCards] = useState([]);
   const [question, setQuestion] = useState('');
@@ -10,6 +11,15 @@ function CardsTab({ decks, setDecks }) {
   const [editingCardId, setEditingCardId] = useState(null);
   const [error, setError] = useState('');
   const [generatingAnswer, setGeneratingAnswer] = useState(false);
+
+  const refreshDecks = () => {
+    getCards(currentDeckId).then(setCards).catch(() => {});
+    // Update deck list
+    fetch('/api/decks')
+      .then(r => r.json())
+      .then(d => setDecks(d))
+      .catch(() => {});
+  };
 
   const openDeck = async (deckId) => {
     setCurrentDeckId(deckId);
@@ -52,7 +62,6 @@ function CardsTab({ decks, setDecks }) {
       setAnswer('');
       const updatedCards = await getCards(currentDeckId);
       setCards(updatedCards);
-      // Update deck card count
       setDecks(prev => prev.map(d =>
         d.id === currentDeckId ? { ...d, card_count: updatedCards.length } : d
       ));
@@ -117,23 +126,11 @@ function CardsTab({ decks, setDecks }) {
     return (
       <div className="cards-container">
         <h2>My Cards</h2>
-        <p className="subtitle">Choose a deck to view or add cards</p>
-        <div className="theme-selection">
-          {decks.length === 0 ? (
-            <p className="placeholder-text">No decks created yet. Create a deck first!</p>
-          ) : (
-            decks.map(deck => (
-              <button
-                key={deck.id}
-                className="theme-btn"
-                onClick={() => openDeck(deck.id)}
-              >
-                <span className="theme-name">{deck.name}</span>
-                <span className="theme-count">{deck.card_count} cards</span>
-              </button>
-            ))
-          )}
-        </div>
+        <DeckSelection
+          decks={decks}
+          onSelectDeck={openDeck}
+          onCreateSuccess={refreshDecks}
+        />
       </div>
     );
   }
@@ -142,7 +139,7 @@ function CardsTab({ decks, setDecks }) {
   return (
     <div className="cards-container">
       <div className="cards-header">
-        <button className="btn-small" onClick={goBack}>← Back to Decks</button>
+        <button className="btn-small" onClick={goBack}>← Back</button>
         <h2>{currentDeck?.name || 'Cards'}</h2>
         <span className="card-count-badge">{cards.length} cards</span>
       </div>

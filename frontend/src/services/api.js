@@ -126,6 +126,19 @@ export async function selfRateAnswer(cardId, rating) {
   return res.json();
 }
 
+export async function rateAnswer(cardId, isCorrect) {
+  const res = await fetch(`${API_URL}/api/study/rate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ card_id: cardId, is_correct: isCorrect })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to rate answer');
+  }
+  return res.json();
+}
+
 export async function getStudyStats(deckId = null) {
   const url = deckId !== null
     ? `${API_URL}/api/study/stats?deck_id=${deckId}`

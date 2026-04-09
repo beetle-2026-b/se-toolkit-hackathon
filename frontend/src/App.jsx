@@ -19,7 +19,6 @@ function App() {
 
   useEffect(() => {
     loadDecks();
-    loadCards();
   }, []);
 
   useEffect(() => {
@@ -104,14 +103,6 @@ function App() {
 
   return (
     <div className="app-container">
-      <div className="sidebar">
-        <DeckSelector
-          decks={decks}
-          selectedDeckId={selectedDeckId}
-          onSelectDeck={handleDeckSelect}
-          onDecksChange={handleDecksChange}
-        />
-      </div>
       <div className="main-content">
         <header>
           <h1>Smart Flashcards with AI</h1>
