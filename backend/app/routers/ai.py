@@ -47,9 +47,12 @@ async def generate_cards(request: TextToCardsRequest):
     if len(request.text) < 50:
         raise HTTPException(status_code=400, detail="Text is too short. Please provide at least 50 characters.")
 
-    cards = await qwen_client.generate_cards(request.text, request.existing_questions)
+    existing = request.existing_questions or []
+    cards = await qwen_client.generate_cards(request.text, existing)
 
     if not cards:
+        if existing:
+            raise HTTPException(status_code=400, detail="Not enough material — all key concepts from this text are already covered in existing cards.")
         raise HTTPException(status_code=500, detail="Failed to generate cards. Please check the AI service.")
 
     return cards
@@ -59,16 +62,16 @@ async def generate_cards(request: TextToCardsRequest):
 async def evaluate_answer(request: EvaluateAnswerRequest):
     if not request.question.strip() or not request.correct_answer.strip():
         raise HTTPException(status_code=400, detail="Question and correct answer are required")
-    
+
     if not request.user_answer.strip():
         raise HTTPException(status_code=400, detail="User answer cannot be empty")
-    
+
     result = await qwen_client.evaluate_answer(
         request.question,
         request.correct_answer,
         request.user_answer
     )
-    
+
     return result
 
 
@@ -103,12 +106,7 @@ async def generate_answer(request: GenerateAnswerRequest):
     return GenerateAnswerResponse(answer=answer)
 
 
-class UploadPDFResponse(BaseModel):
-    cards: List[CardResponse]
-    extracted_text: str
-
-
-@router.post("/upload-pdf", response_model=UploadPDFResponse)
+@router.post("/upload-pdf", response_model=List[CardResponse])
 async def upload_pdf(file: UploadFile = File(...)):
     if not file.filename or not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
@@ -134,8 +132,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         if not cards:
             raise HTTPException(status_code=500, detail="Failed to generate cards from PDF. Please check the AI service.")
 
-        # Truncate text for response (keep first 2000 chars)
-        return UploadPDFResponse(cards=cards, extracted_text=text[:2000])
+        return cards
     except HTTPException:
         raise
     except Exception as e:
@@ -155,7 +152,6 @@ async def generate_deck_name(request: GenerateDeckNameRequest):
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
-    # Take first 500 chars for context
     text = request.text[:500]
 
     prompt = f"""Based on this text, suggest a short, descriptive deck name (2-4 words). Return ONLY the name, nothing else.

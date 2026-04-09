@@ -52,13 +52,13 @@ class QwenClient:
                         "model": self.model,
                         "messages": messages,
                         "temperature": 0.7,
-                        "max_tokens": 2000
+                        "max_tokens": 4000
                     },
                     headers={
                         "Authorization": f"Bearer {self.api_key}",
                         "Content-Type": "application/json"
                     },
-                    timeout=self.timeout
+                    timeout=60.0
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -70,9 +70,52 @@ class QwenClient:
     async def generate_cards(self, text: str, existing_questions: List[str] = None) -> List[GeneratedCard]:
         existing = existing_questions or []
 
-        prompt = f"""You are a flashcard generator. Based on the following text, create exactly 8 question-answer pairs that cover the key concepts.
+        if existing:
+            existing_list = "\n".join(f"- {q}" for q in existing[:30])
+            prompt = f"""You are analyzing whether a source text has UNCOVERED concepts for new flashcards.
 
-Return ONLY valid JSON in this exact format, with no additional text:
+EXISTING QUESTIONS (already covered):
+{existing_list}
+
+SOURCE TEXT (the ONLY source of information — do NOT use outside knowledge):
+{text}
+
+TASK:
+1. Check if there are ANY facts, concepts, or details in the source text that are NOT addressed by existing questions.
+2. If yes, create 3-5 deeper questions that test understanding of relationships, mechanisms, or comparisons — using ONLY information from the source text.
+3. If the source text is SHORT and all its key facts are already covered, return {{"cards": []}}.
+
+IMPORTANT: Do NOT invent information not in the source text. Do NOT ask about implications, comparisons, or mechanisms not mentioned in the text. Only use what's actually written.
+
+Return ONLY valid JSON."""
+
+            response = await self._make_request([
+                {"role": "system", "content": "You analyze whether a short source text has any uncovered facts. If all facts are covered or the text is too short, return empty cards. Never use outside knowledge. Only return valid JSON."},
+                {"role": "user", "content": prompt}
+            ])
+        else:
+            word_count = len(text.split())
+            if word_count < 100:
+                num_cards = "3-5"
+            elif word_count < 300:
+                num_cards = "5-8"
+            elif word_count < 600:
+                num_cards = "8-12"
+            elif word_count < 1000:
+                num_cards = "12-15"
+            else:
+                num_cards = "15-20"
+
+            prompt = f"""You are an expert flashcard generator. Analyze the text below and create {num_cards} question-answer pairs that cover ALL key concepts, facts, and details.
+
+Rules:
+- Cover every important concept from the text
+- Include both basic and detailed questions
+- Do NOT repeat the same concept in multiple cards
+- Each card should test a unique piece of knowledge
+- Use ONLY information from the text
+
+Return ONLY valid JSON in this exact format:
 {{
   "cards": [
     {{"question": "Your question here", "answer": "Your answer here"}},
@@ -80,22 +123,13 @@ Return ONLY valid JSON in this exact format, with no additional text:
   ]
 }}
 
-Text to generate cards from:
+Text:
 {text}"""
 
-        if existing:
-            existing_list = "\n".join(f"- {q}" for q in existing[:20])
-            prompt += f"""
-
-IMPORTANT: Do NOT repeat or rephrase these questions that were already generated:
-{existing_list}
-
-Create COMPLETELY NEW questions covering different information from the text."""
-
-        response = await self._make_request([
-            {"role": "system", "content": "You are a helpful assistant that generates flashcards from text. Always return valid JSON. Never repeat existing questions."},
-            {"role": "user", "content": prompt}
-        ])
+            response = await self._make_request([
+                {"role": "system", "content": f"You generate exactly enough flashcards to cover all key concepts in a text, no more and no less. Create {num_cards} cards. Always return valid JSON."},
+                {"role": "user", "content": prompt}
+            ])
 
         if not response:
             return []

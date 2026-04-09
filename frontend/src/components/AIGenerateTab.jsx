@@ -11,13 +11,10 @@ function AIGenerateTab({ onDeckCreated }) {
   const [deckName, setDeckName] = useState('');
   const [saving, setSaving] = useState(false);
   const [sourceTextForName, setSourceTextForName] = useState('');
-  const [sourceTextForGenerate, setSourceTextForGenerate] = useState('');
   const [nameLoading, setNameLoading] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editQuestion, setEditQuestion] = useState('');
   const [editAnswer, setEditAnswer] = useState('');
-
-  // Add card form
   const [showAddForm, setShowAddForm] = useState(false);
   const [newQuestion, setNewQuestion] = useState('');
   const [newAnswer, setNewAnswer] = useState('');
@@ -42,7 +39,6 @@ function AIGenerateTab({ onDeckCreated }) {
       const cards = await generateCardsFromText(sourceText);
       setGeneratedCards(cards);
       setSourceTextForName(sourceText);
-      setSourceTextForGenerate(sourceText);
 
       try {
         const nameData = await generateDeckName(sourceText);
@@ -74,11 +70,9 @@ function AIGenerateTab({ onDeckCreated }) {
     setShowAddForm(false);
 
     try {
-      const result = await uploadPDF(file);
-      setGeneratedCards(result.cards);
-      const extractedText = result.extracted_text || file.name.replace('.pdf', '');
+      const cards = await uploadPDF(file);
+      setGeneratedCards(cards);
       setSourceTextForName(file.name.replace('.pdf', ''));
-      setSourceTextForGenerate(extractedText);
 
       try {
         const nameData = await generateDeckName(file.name.replace('.pdf', ''));
@@ -146,8 +140,7 @@ function AIGenerateTab({ onDeckCreated }) {
   };
 
   const handleGenerateMore = async () => {
-    if (!sourceTextForGenerate) return;
-
+    if (!sourceTextForName) return;
     setLoading(true);
     setError('');
     try {
@@ -155,17 +148,18 @@ function AIGenerateTab({ onDeckCreated }) {
       const res = await fetch('/api/generate-cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: sourceTextForGenerate, existing_questions: existingQuestions })
+        body: JSON.stringify({ text: sourceTextForName, existing_questions: existingQuestions })
       });
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.detail || 'Failed to generate more cards');
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Failed to generate more cards');
       }
       const newCards = await res.json();
-      // Append all new cards (backend already avoids duplicates but we double-check)
-      const existingSet = new Set(generatedCards.map(c => c.question.toLowerCase()));
-      const unique = newCards.filter(c => !existingSet.has(c.question.toLowerCase()));
-      setGeneratedCards(prev => [...prev, ...unique]);
+      if (newCards.length === 0) {
+        setError('All key concepts from this source are already covered.');
+      } else {
+        setGeneratedCards(prev => [...prev, ...newCards]);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -195,7 +189,6 @@ function AIGenerateTab({ onDeckCreated }) {
       setPdfFile(null);
       setDeckName('');
       setSourceTextForName('');
-      setSourceTextForGenerate('');
       setError('');
       setShowAddForm(false);
 

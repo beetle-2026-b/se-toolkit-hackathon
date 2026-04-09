@@ -188,8 +188,7 @@ export async function uploadPDF(file) {
     const error = await res.json();
     throw new Error(error.detail || 'Failed to process PDF');
   }
-  const data = await res.json();
-  return { cards: data.cards, extracted_text: data.extracted_text };
+  return res.json();
 }
 
 export async function generateDeckName(text) {
