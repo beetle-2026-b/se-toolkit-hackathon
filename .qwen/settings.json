@@ -20,7 +20,9 @@
       "Bash(docker image *)",
       "Bash(touch *)",
       "Bash(docker exec *)",
-      "Bash(docker rmi *)"
+      "Bash(docker rmi *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   },
   "$version": 3

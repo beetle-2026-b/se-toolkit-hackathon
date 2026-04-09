@@ -47,14 +47,14 @@ class ScoredStudyStats(BaseModel):
     average_score: float
 
 
-class SessionStats(BaseModel):
-    total: int
-    correct: int
-    partial: int
-    incorrect: int
-    correct_pct: float
-    partial_pct: float
-    incorrect_pct: float
+class ProgressStats(BaseModel):
+    total_cards: int
+    total_learned: int
+    average_score: float
+    studied_today: int
+    correct_today: int
+    partial_today: int
+    incorrect_today: int
 
 
 @router.get("/study/next")
@@ -105,6 +105,7 @@ def self_rate_answer(request: SelfRateRequest, db: Session = Depends(get_db)):
     session = StudySession(
         card_id=card.id,
         is_correct=is_correct,
+        rating=request.rating,
         box_before=box_before,
         box_after=new_box
     )
@@ -207,29 +208,65 @@ def get_scored_study_stats(db: Session = Depends(get_db)):
     )
 
 
-@router.get("/study/progress")
+@router.get("/study/progress", response_model=ProgressStats)
 def get_progress(db: Session = Depends(get_db), deck_id: Optional[int] = None):
-    query = db.query(Card)
+    card_query = db.query(Card)
     if deck_id is not None:
-        query = query.filter(Card.deck_id == deck_id)
+        card_query = card_query.filter(Card.deck_id == deck_id)
 
-    cards = query.all()
+    total_cards = card_query.count()
 
-    box_distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
-    mastery_levels = {"New": 0, "Learning": 0, "Familiar": 0, "Proficient": 0, "Mastered": 0}
+    # Total learned: cards answered correctly at least once (ever)
+    session_query = db.query(StudySession.card_id).filter(StudySession.is_correct == True)
+    if deck_id is not None:
+        session_query = session_query.join(Card, StudySession.card_id == Card.id).filter(Card.deck_id == deck_id)
 
-    for card in cards:
-        box_distribution[card.box] = box_distribution.get(card.box, 0) + 1
-        level = get_mastery_level(card.box)
-        mastery_levels[level] = mastery_levels.get(level, 0) + 1
+    learned_card_ids = set(row[0] for row in session_query.distinct().all())
+    total_learned = len(learned_card_ids)
 
-    total_cards = len(cards)
-    mastered_count = box_distribution.get(5, 0)
-    mastery_percentage = round((mastered_count / total_cards * 100), 1) if total_cards > 0 else 0
+    # Average score
+    all_sessions = db.query(StudySession).all()
+    if deck_id is not None:
+        all_sessions = [s for s in all_sessions if s.card_id in {c.id for c in card_query.all()}]
 
-    return {
-        "total_cards": total_cards,
-        "box_distribution": box_distribution,
-        "mastery_levels": mastery_levels,
-        "mastery_percentage": mastery_percentage
-    }
+    if all_sessions:
+        scores = []
+        for s in all_sessions:
+            if s.box_after >= 4:
+                scores.append(9)
+            elif s.box_after >= 2:
+                scores.append(6)
+            else:
+                scores.append(2)
+        average_score = round(sum(scores) / len(scores), 1) if scores else 0.0
+    else:
+        average_score = 0.0
+
+    # Today stats - unique cards only
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_query = db.query(StudySession).filter(StudySession.answered_at >= today_start)
+    if deck_id is not None:
+        today_query = today_query.join(Card, StudySession.card_id == Card.id).filter(Card.deck_id == deck_id)
+
+    today_sessions = today_query.all()
+    today_unique_cards = set(s.card_id for s in today_sessions)
+    studied_today = len(today_unique_cards)
+
+    # Today breakdown - unique cards with their last rating
+    last_session_per_card = {}
+    for s in today_sessions:
+        last_session_per_card[s.card_id] = s
+
+    correct_today = sum(1 for s in last_session_per_card.values() if s.rating == "correct")
+    partial_today = sum(1 for s in last_session_per_card.values() if s.rating == "partial")
+    incorrect_today = sum(1 for s in last_session_per_card.values() if s.rating == "incorrect")
+
+    return ProgressStats(
+        total_cards=total_cards,
+        total_learned=total_learned,
+        average_score=average_score,
+        studied_today=studied_today,
+        correct_today=correct_today,
+        partial_today=partial_today,
+        incorrect_today=incorrect_today
+    )

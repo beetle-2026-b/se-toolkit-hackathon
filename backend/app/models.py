@@ -31,6 +31,7 @@ class StudySession(Base):
     id = Column(Integer, primary_key=True, index=True)
     card_id = Column(Integer, nullable=False)
     is_correct = Column(Boolean, nullable=True)
+    rating = Column(String, nullable=True)  # "correct", "partial", "incorrect"
     answered_at = Column(DateTime(timezone=True), server_default=func.now())
     box_before = Column(Integer, nullable=True)
     box_after = Column(Integer, nullable=True)

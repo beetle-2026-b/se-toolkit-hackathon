@@ -511,6 +511,15 @@ header h1 {
   color: #2c3e50;
 }
 
+.stat-card.today-highlight {
+  background: #e8f5e9;
+  border: 2px solid #27ae60;
+}
+
+.stat-card.today-highlight p {
+  color: #27ae60;
+}
+
 .text-success {
   color: #27ae60 !important;
 }
