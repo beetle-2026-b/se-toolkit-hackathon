@@ -67,7 +67,9 @@ class QwenClient:
             print(f"Qwen API error: {e}")
             return None
 
-    async def generate_cards(self, text: str) -> List[GeneratedCard]:
+    async def generate_cards(self, text: str, existing_questions: List[str] = None) -> List[GeneratedCard]:
+        existing = existing_questions or []
+
         prompt = f"""You are a flashcard generator. Based on the following text, create exactly 8 question-answer pairs that cover the key concepts.
 
 Return ONLY valid JSON in this exact format, with no additional text:
@@ -81,8 +83,17 @@ Return ONLY valid JSON in this exact format, with no additional text:
 Text to generate cards from:
 {text}"""
 
+        if existing:
+            existing_list = "\n".join(f"- {q}" for q in existing[:20])
+            prompt += f"""
+
+IMPORTANT: Do NOT repeat or rephrase these questions that were already generated:
+{existing_list}
+
+Create COMPLETELY NEW questions covering different information from the text."""
+
         response = await self._make_request([
-            {"role": "system", "content": "You are a helpful assistant that generates flashcards from text. Always return valid JSON."},
+            {"role": "system", "content": "You are a helpful assistant that generates flashcards from text. Always return valid JSON. Never repeat existing questions."},
             {"role": "user", "content": prompt}
         ])
 

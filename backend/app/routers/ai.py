@@ -10,6 +10,7 @@ router = APIRouter()
 
 class TextToCardsRequest(BaseModel):
     text: str
+    existing_questions: Optional[List[str]] = []
 
 
 class CardResponse(BaseModel):
@@ -42,15 +43,15 @@ class GenerateHintResponse(BaseModel):
 async def generate_cards(request: TextToCardsRequest):
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
-    
+
     if len(request.text) < 50:
         raise HTTPException(status_code=400, detail="Text is too short. Please provide at least 50 characters.")
-    
-    cards = await qwen_client.generate_cards(request.text)
-    
+
+    cards = await qwen_client.generate_cards(request.text, request.existing_questions)
+
     if not cards:
         raise HTTPException(status_code=500, detail="Failed to generate cards. Please check the AI service.")
-    
+
     return cards
 
 
@@ -102,7 +103,12 @@ async def generate_answer(request: GenerateAnswerRequest):
     return GenerateAnswerResponse(answer=answer)
 
 
-@router.post("/upload-pdf", response_model=List[CardResponse])
+class UploadPDFResponse(BaseModel):
+    cards: List[CardResponse]
+    extracted_text: str
+
+
+@router.post("/upload-pdf", response_model=UploadPDFResponse)
 async def upload_pdf(file: UploadFile = File(...)):
     if not file.filename or not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
@@ -128,7 +134,8 @@ async def upload_pdf(file: UploadFile = File(...)):
         if not cards:
             raise HTTPException(status_code=500, detail="Failed to generate cards from PDF. Please check the AI service.")
 
-        return cards
+        # Truncate text for response (keep first 2000 chars)
+        return UploadPDFResponse(cards=cards, extracted_text=text[:2000])
     except HTTPException:
         raise
     except Exception as e:
