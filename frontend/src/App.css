@@ -445,6 +445,16 @@ header h1 {
   text-align: center;
 }
 
+.stats-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  margin-top: 20px;
+}
+
 .progress-overview {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
