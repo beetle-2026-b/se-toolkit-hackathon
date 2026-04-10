@@ -1,6 +1,7 @@
 import os
 import json
 import httpx
+import traceback
 from typing import List, Dict, Optional
 from pydantic import BaseModel
 
@@ -65,6 +66,7 @@ class QwenClient:
                 return data["choices"][0]["message"]["content"]
         except Exception as e:
             print(f"Qwen API error: {e}")
+            traceback.print_exc()
             return None
 
     async def generate_cards(self, text: str, existing_questions: List[str] = None) -> List[GeneratedCard]:
@@ -136,18 +138,82 @@ Text:
 
         try:
             response = response.strip()
-            if response.startswith("```"):
-                response = response.split("```")[1]
-                if response.startswith("json"):
-                    response = response[4:]
-                response = response.strip()
 
-            data = json.loads(response)
-            cards = data.get("cards", [])
-            return [GeneratedCard(question=c["question"], answer=c["answer"]) for c in cards[:10]]
+            # Strategy 1: Look for ```json...``` or ```...``` blocks
+            if "```" in response:
+                parts = response.split("```")
+                for part in parts:
+                    part = part.strip()
+                    if part.startswith("json"):
+                        part = part[4:].strip()
+                    if part.startswith("{"):
+                        try:
+                            data = json.loads(part)
+                            cards = data.get("cards", [])
+                            if cards:
+                                return [GeneratedCard(question=c["question"], answer=c["answer"]) for c in cards[:10]]
+                        except json.JSONDecodeError:
+                            continue
+
+            # Strategy 2: Try parsing the whole response as JSON
+            if response.startswith("{"):
+                data = json.loads(response)
+                cards = data.get("cards", [])
+                return [GeneratedCard(question=c["question"], answer=c["answer"]) for c in cards[:10]]
+
+            # Strategy 3: Find the first { and last } in the response
+            start = response.find("{")
+            end = response.rfind("}")
+            if start != -1 and end != -1:
+                json_str = response[start:end+1]
+                data = json.loads(json_str)
+                cards = data.get("cards", [])
+                return [GeneratedCard(question=c["question"], answer=c["answer"]) for c in cards[:10]]
+
+            print(f"No valid JSON found in response: {response[:200]}")
+            return []
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             print(f"Failed to parse Qwen response: {e}")
+            print(f"Raw response: {response[:500]}")
             return []
+
+    def _parse_json_response(self, response: str) -> Optional[dict]:
+        """Robust JSON parsing from AI responses that may contain markdown or extra text."""
+        if not response:
+            return None
+        response = response.strip()
+
+        # Strategy 1: Look for ```json...``` or ```...``` blocks
+        if "```" in response:
+            parts = response.split("```")
+            for part in parts:
+                part = part.strip()
+                if part.startswith("json"):
+                    part = part[4:].strip()
+                if part.startswith("{"):
+                    try:
+                        return json.loads(part)
+                    except json.JSONDecodeError:
+                        continue
+
+        # Strategy 2: Try parsing the whole response as JSON
+        if response.startswith("{"):
+            try:
+                return json.loads(response)
+            except json.JSONDecodeError:
+                pass
+
+        # Strategy 3: Find the first { and last } in the response
+        start = response.find("{")
+        end = response.rfind("}")
+        if start != -1 and end != -1:
+            json_str = response[start:end+1]
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                pass
+
+        return None
 
     async def evaluate_answer(self, question: str, correct_answer: str, user_answer: str) -> EvaluationResult:
         prompt = f"""You are evaluating a student's answer to a flashcard question.
@@ -180,27 +246,19 @@ Return ONLY valid JSON in this exact format:
                 feedback="Unable to evaluate answer due to a technical error."
             )
 
-        try:
-            response = response.strip()
-            if response.startswith("```"):
-                response = response.split("```")[1]
-                if response.startswith("json"):
-                    response = response[4:]
-                response = response.strip()
-
-            data = json.loads(response)
-            return EvaluationResult(
-                is_correct=data.get("is_correct", False),
-                confidence=float(data.get("confidence", 0.0)),
-                feedback=data.get("feedback", "")
-            )
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-            print(f"Failed to parse Qwen evaluation response: {e}")
+        data = self._parse_json_response(response)
+        if not data:
             return EvaluationResult(
                 is_correct=False,
                 confidence=0.0,
                 feedback="Unable to evaluate answer. Please try again."
             )
+
+        return EvaluationResult(
+            is_correct=data.get("is_correct", False),
+            confidence=float(data.get("confidence", 0.0)),
+            feedback=data.get("feedback", "")
+        )
 
     async def generate_hint(self, question: str, user_attempt: str = "") -> str:
         prompt = f"""You are helping a student who is stuck on a flashcard question.
@@ -272,39 +330,31 @@ Return ONLY valid JSON:
                 comment="AI service unavailable. Please try again."
             )
 
-        try:
-            response = response.strip()
-            if response.startswith("```"):
-                response = response.split("```")[1]
-                if response.startswith("json"):
-                    response = response[4:]
-                response = response.strip()
-
-            data = json.loads(response)
-            score = int(data.get("score", 0))
-            label = data.get("label", "")
-            comment = data.get("comment", "")
-
-            # Ensure score is in valid range
-            if score < 1 or score > 10:
-                return ScoredEvaluation(
-                    score=0,
-                    label="Evaluation failed",
-                    comment="Could not evaluate answer. Please try again."
-                )
-
-            return ScoredEvaluation(
-                score=score,
-                label=label,
-                comment=comment
-            )
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-            print(f"Failed to parse score response: {e}")
+        data = self._parse_json_response(response)
+        if not data:
             return ScoredEvaluation(
                 score=0,
                 label="Evaluation failed",
                 comment="Could not evaluate answer. Please try again."
             )
+
+        score = int(data.get("score", 0))
+        label = data.get("label", "")
+        comment = data.get("comment", "")
+
+        # Ensure score is in valid range
+        if score < 1 or score > 10:
+            return ScoredEvaluation(
+                score=0,
+                label="Evaluation failed",
+                comment="Could not evaluate answer. Please try again."
+            )
+
+        return ScoredEvaluation(
+            score=score,
+            label=label,
+            comment=comment
+        )
 
     async def generate_answer(self, question: str) -> str:
         prompt = f"""Generate a concise, factual answer to this question. Keep it short (1-2 sentences max). Be direct and clear.
@@ -417,35 +467,27 @@ Return ONLY valid JSON:
                 comment=f"Incorrect. The correct answer is: {correct_answer}."
             )
 
-        try:
-            response = response.strip()
-            if response.startswith("```"):
-                response = response.split("```")[1]
-                if response.startswith("json"):
-                    response = response[4:]
-                response = response.strip()
-
-            data = json.loads(response)
-            verdict = data.get("verdict", "Incorrect")
-            if verdict not in ("Correct", "Partially correct", "Incorrect"):
-                verdict = "Incorrect"
-
-            comment = data.get("comment", "")
-            if not comment:
-                if verdict == "Correct":
-                    comment = "Correct."
-                elif verdict == "Partially correct":
-                    comment = f"Partially correct. The correct answer is: {correct_answer}."
-                else:
-                    comment = f"Incorrect. The correct answer is: {correct_answer}."
-
-            return VerdictEvaluation(verdict=verdict, comment=comment)
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-            print(f"Failed to parse verdict response: {e}")
+        data = self._parse_json_response(response)
+        if not data:
             return VerdictEvaluation(
                 verdict="Incorrect",
                 comment=f"Incorrect. The correct answer is: {correct_answer}."
             )
+
+        verdict = data.get("verdict", "Incorrect")
+        if verdict not in ("Correct", "Partially correct", "Incorrect"):
+            verdict = "Incorrect"
+
+        comment = data.get("comment", "")
+        if not comment:
+            if verdict == "Correct":
+                comment = "Correct."
+            elif verdict == "Partially correct":
+                comment = f"Partially correct. The correct answer is: {correct_answer}."
+            else:
+                comment = f"Incorrect. The correct answer is: {correct_answer}."
+
+        return VerdictEvaluation(verdict=verdict, comment=comment)
 
 
 qwen_client = QwenClient()
