@@ -61,6 +61,13 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: Se
     return user
 
 
+async def require_user(token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    user = await get_current_user(token, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user
+
+
 @router.post("/auth/register")
 def register(request: RegisterRequest, db: Session = Depends(get_db)):
     if " " in request.username:

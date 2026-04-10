@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { checkQuizAnswer } from '../services/api';
+import { checkQuizAnswer, getCards } from '../services/api';
 import DeckSelection from './DeckSelection';
 
 function AIQuizTab({ decks, onCardRated }) {
@@ -14,7 +14,7 @@ function AIQuizTab({ decks, onCardRated }) {
   const [error, setError] = useState('');
   const [sessionStats, setSessionStats] = useState({ correct: 0, partial: 0, incorrect: 0 });
 
-  const startSession = (id) => {
+  const startSession = async (id) => {
     if (!id) return;
     setDeckId(id);
     setPhase('quiz');
@@ -24,13 +24,17 @@ function AIQuizTab({ decks, onCardRated }) {
     setLastUserAnswer('');
     setError('');
     setSessionStats({ correct: 0, partial: 0, incorrect: 0 });
+    setLoading(true);
 
-    fetch(`/api/cards?deck_id=${id}`)
-      .then(r => r.json())
-      .then(cards => {
-        const shuffled = [...cards].sort(() => Math.random() - 0.5);
-        setQuizCards(shuffled);
-      });
+    try {
+      const cardsData = await getCards(id);
+      const shuffled = [...cardsData].sort(() => Math.random() - 0.5);
+      setQuizCards(shuffled);
+    } catch (err) {
+      setError('Failed to load cards.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCheck = async () => {
@@ -155,8 +159,20 @@ function AIQuizTab({ decks, onCardRated }) {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="ai-quiz-container">
+        <p className="placeholder-text">Loading cards...</p>
+      </div>
+    );
+  }
+
   if (!currentCard) {
-    return <div className="ai-quiz-container"><p className="placeholder-text">Loading...</p></div>;
+    return (
+      <div className="ai-quiz-container">
+        <p className="placeholder-text">No cards available in this deck.</p>
+      </div>
+    );
   }
 
   const verdictColor = result?.verdict === 'Correct' ? '#27ae60'

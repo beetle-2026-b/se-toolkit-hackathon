@@ -348,3 +348,11 @@ export async function getQuizStats() {
     if (!res.ok) throw new Error('Failed to load quiz stats');
     return res.json();
 }
+
+export async function clearAllProgress() {
+    const res = await authFetch(`${API_URL}/api/study/clear-all-progress`, {
+        method: 'POST'
+    });
+    if (!res.ok) throw new Error('Failed to clear progress');
+    return res.json();
+}

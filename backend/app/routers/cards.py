@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from app.database import get_db
-from app.models import Card, Deck
+from app.models import Card, Deck, User
+from app.routers.auth import require_user
 
 router = APIRouter()
 
@@ -25,7 +26,7 @@ class CardResponse(BaseModel):
     id: int
     question: str
     answer: str
-    deck_id: Optional[int]
+    deck_id: int
     box: int
     next_review_date: Optional[str]
     created_at: Optional[str]
@@ -45,19 +46,19 @@ class CardResponse(BaseModel):
 
 
 @router.post("/cards", response_model=CardResponse, status_code=201)
-def create_card(card: CardCreate, db: Session = Depends(get_db)):
+def create_card(card: CardCreate, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
     if not card.question.strip() or not card.answer.strip():
         raise HTTPException(status_code=400, detail="Question and answer cannot be empty")
 
-    # Verify deck exists
-    deck = db.query(Deck).filter(Deck.id == card.deck_id).first()
+    deck = db.query(Deck).filter(Deck.id == card.deck_id, Deck.user_id == current_user.id).first()
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
 
     db_card = Card(
         question=card.question,
         answer=card.answer,
-        deck_id=card.deck_id
+        deck_id=card.deck_id,
+        user_id=current_user.id
     )
     db.add(db_card)
     db.commit()
@@ -66,8 +67,8 @@ def create_card(card: CardCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/cards", response_model=List[CardResponse])
-def get_cards(skip: int = 0, limit: int = 100, deck_id: Optional[int] = None, db: Session = Depends(get_db)):
-    query = db.query(Card)
+def get_cards(skip: int = 0, limit: int = 100, deck_id: Optional[int] = None, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    query = db.query(Card).filter(Card.user_id == current_user.id)
     if deck_id is not None:
         query = query.filter(Card.deck_id == deck_id)
     cards = query.offset(skip).limit(limit).all()
@@ -75,16 +76,16 @@ def get_cards(skip: int = 0, limit: int = 100, deck_id: Optional[int] = None, db
 
 
 @router.get("/cards/{card_id}", response_model=CardResponse)
-def get_card(card_id: int, db: Session = Depends(get_db)):
-    card = db.query(Card).filter(Card.id == card_id).first()
+def get_card(card_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    card = db.query(Card).filter(Card.id == card_id, Card.user_id == current_user.id).first()
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
     return card
 
 
 @router.put("/cards/{card_id}", response_model=CardResponse)
-def update_card(card_id: int, card: CardUpdate, db: Session = Depends(get_db)):
-    db_card = db.query(Card).filter(Card.id == card_id).first()
+def update_card(card_id: int, card: CardUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    db_card = db.query(Card).filter(Card.id == card_id, Card.user_id == current_user.id).first()
     if not db_card:
         raise HTTPException(status_code=404, detail="Card not found")
     
@@ -99,6 +100,9 @@ def update_card(card_id: int, card: CardUpdate, db: Session = Depends(get_db)):
         db_card.answer = card.answer
     
     if card.deck_id is not None:
+        deck = db.query(Deck).filter(Deck.id == card.deck_id, Deck.user_id == current_user.id).first()
+        if not deck:
+            raise HTTPException(status_code=404, detail="Deck not found")
         db_card.deck_id = card.deck_id
     
     db.commit()
@@ -107,8 +111,8 @@ def update_card(card_id: int, card: CardUpdate, db: Session = Depends(get_db)):
 
 
 @router.delete("/cards/{card_id}", status_code=204)
-def delete_card(card_id: int, db: Session = Depends(get_db)):
-    db_card = db.query(Card).filter(Card.id == card_id).first()
+def delete_card(card_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    db_card = db.query(Card).filter(Card.id == card_id, Card.user_id == current_user.id).first()
     if not db_card:
         raise HTTPException(status_code=404, detail="Card not found")
     

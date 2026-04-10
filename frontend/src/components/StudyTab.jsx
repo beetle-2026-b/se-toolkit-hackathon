@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { getNextStudyCard } from '../services/api';
+import { getNextStudyCard, getCards, selfRateAnswer } from '../services/api';
 import DeckSelection from './DeckSelection';
 
 function StudyTab({ decks, selectedDeckId, onCardRated }) {
-  const [phase, setPhase] = useState('select'); // 'select' | 'studying' | 'done'
+  const [phase, setPhase] = useState('select');
   const [deckId, setDeckId] = useState(null);
   const [deckCards, setDeckCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [stats, setStats] = useState({ correct: 0, partial: 0, incorrect: 0 });
   const [error, setError] = useState('');
+  const [loadingCards, setLoadingCards] = useState(false);
 
-  const startSession = (id) => {
+  const startSession = async (id) => {
     if (!id) return;
     setDeckId(id);
     setPhase('studying');
@@ -19,13 +20,17 @@ function StudyTab({ decks, selectedDeckId, onCardRated }) {
     setRevealed(false);
     setStats({ correct: 0, partial: 0, incorrect: 0 });
     setError('');
+    setLoadingCards(true);
 
-    fetch(`/api/cards?deck_id=${id}`)
-      .then(r => r.json())
-      .then(cards => {
-        const shuffled = [...cards].sort(() => Math.random() - 0.5);
-        setDeckCards(shuffled);
-      });
+    try {
+      const cardsData = await getCards(id);
+      const shuffled = [...cardsData].sort(() => Math.random() - 0.5);
+      setDeckCards(shuffled);
+    } catch (err) {
+      setError('Failed to load cards.');
+    } finally {
+      setLoadingCards(false);
+    }
   };
 
   const handleRate = async (rating) => {
@@ -33,15 +38,7 @@ function StudyTab({ decks, selectedDeckId, onCardRated }) {
     if (!card) return;
 
     try {
-      const res = await fetch('/api/study/self-rate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ card_id: card.id, rating })
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || 'Failed to rate answer');
-      }
+      await selfRateAnswer(card.id, rating);
       if (onCardRated) onCardRated();
     } catch (err) {
       setError('Error rating answer.');
@@ -132,8 +129,20 @@ function StudyTab({ decks, selectedDeckId, onCardRated }) {
     );
   }
 
+  if (loadingCards) {
+    return (
+      <div className="study-container">
+        <p className="placeholder-text">Loading cards...</p>
+      </div>
+    );
+  }
+
   if (!currentCard) {
-    return <div className="study-container"><p className="placeholder-text">Loading...</p></div>;
+    return (
+      <div className="study-container">
+        <p className="placeholder-text">No cards available in this deck.</p>
+      </div>
+    );
   }
 
   return (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getStudyStats, getQuizStats, clearAllProgress } from '../services/api';
 
 function ProgressTab({ deckName }) {
   const [studyStats, setStudyStats] = useState(null);
@@ -8,8 +9,8 @@ function ProgressTab({ deckName }) {
   const fetchStats = async () => {
     try {
       const [sRes, qRes] = await Promise.all([
-        fetch('/api/study/stats').then(r => r.json()),
-        fetch('/api/ai-quiz/stats').then(r => r.json())
+        getStudyStats(),
+        getQuizStats()
       ]);
       setStudyStats(sRes);
       setQuizStats(qRes);
@@ -26,8 +27,7 @@ function ProgressTab({ deckName }) {
     if (!confirm('Clear all progress? This resets all cards and removes all study history.')) return;
     setClearing(true);
     try {
-      const res = await fetch('/api/study/clear-all-progress', { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to clear');
+      await clearAllProgress();
       await fetchStats();
     } catch (err) {
       alert('Failed to clear progress.');
@@ -89,8 +89,8 @@ function ProgressTab({ deckName }) {
         </div>
       </div>
 
-      <div className="progress-refresh-section">
-        <button className="btn-refresh" onClick={handleClearAll} disabled={clearing}>
+      <div className="progress-section-actions">
+        <button className="btn-small" onClick={handleClearAll} disabled={clearing}>
           {clearing ? 'Clearing...' : 'Refresh Progress'}
         </button>
       </div>

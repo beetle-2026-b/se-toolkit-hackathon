@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from app.database import get_db
-from app.models import Deck, Card
+from app.models import Deck, Card, User
+from app.routers.auth import require_user
 
 router = APIRouter()
 
@@ -56,8 +57,8 @@ class DeckResponse(BaseModel):
 
 
 @router.post("/decks", response_model=DeckResponse, status_code=201)
-def create_deck(deck: DeckCreate, db: Session = Depends(get_db)):
-    db_deck = Deck(name=deck.name)
+def create_deck(deck: DeckCreate, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    db_deck = Deck(name=deck.name, user_id=current_user.id)
     db.add(db_deck)
     db.commit()
     db.refresh(db_deck)
@@ -72,12 +73,12 @@ def create_deck(deck: DeckCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/decks", response_model=List[DeckResponse])
-def get_decks(db: Session = Depends(get_db)):
-    decks = db.query(Deck).all()
+def get_decks(db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    decks = db.query(Deck).filter(Deck.user_id == current_user.id).all()
 
     result = []
     for deck in decks:
-        card_count = db.query(Card).filter(Card.deck_id == deck.id).count()
+        card_count = db.query(Card).filter(Card.deck_id == deck.id, Card.user_id == current_user.id).count()
         result.append(DeckResponse(
             id=deck.id,
             name=deck.name,
@@ -90,12 +91,12 @@ def get_decks(db: Session = Depends(get_db)):
 
 
 @router.get("/decks/{deck_id}", response_model=DeckResponse)
-def get_deck(deck_id: int, db: Session = Depends(get_db)):
-    deck = db.query(Deck).filter(Deck.id == deck_id).first()
+def get_deck(deck_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    deck = db.query(Deck).filter(Deck.id == deck_id, Deck.user_id == current_user.id).first()
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
 
-    card_count = db.query(Card).filter(Card.deck_id == deck.id).count()
+    card_count = db.query(Card).filter(Card.deck_id == deck.id, Card.user_id == current_user.id).count()
     return DeckResponse(
         id=deck.id,
         name=deck.name,
@@ -106,8 +107,8 @@ def get_deck(deck_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/decks/{deck_id}", response_model=DeckResponse)
-def update_deck(deck_id: int, deck_update: DeckUpdate, db: Session = Depends(get_db)):
-    deck = db.query(Deck).filter(Deck.id == deck_id).first()
+def update_deck(deck_id: int, deck_update: DeckUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    deck = db.query(Deck).filter(Deck.id == deck_id, Deck.user_id == current_user.id).first()
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
 
@@ -117,7 +118,7 @@ def update_deck(deck_id: int, deck_update: DeckUpdate, db: Session = Depends(get
     db.commit()
     db.refresh(deck)
 
-    card_count = db.query(Card).filter(Card.deck_id == deck.id).count()
+    card_count = db.query(Card).filter(Card.deck_id == deck.id, Card.user_id == current_user.id).count()
     return DeckResponse(
         id=deck.id,
         name=deck.name,
@@ -128,13 +129,13 @@ def update_deck(deck_id: int, deck_update: DeckUpdate, db: Session = Depends(get
 
 
 @router.delete("/decks/{deck_id}", status_code=204)
-def delete_deck(deck_id: int, db: Session = Depends(get_db)):
-    deck = db.query(Deck).filter(Deck.id == deck_id).first()
+def delete_deck(deck_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    deck = db.query(Deck).filter(Deck.id == deck_id, Deck.user_id == current_user.id).first()
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
 
     # Delete all cards in this deck
-    db.query(Card).filter(Card.deck_id == deck_id).delete()
+    db.query(Card).filter(Card.deck_id == deck_id, Card.user_id == current_user.id).delete()
 
     db.delete(deck)
     db.commit()
@@ -142,12 +143,12 @@ def delete_deck(deck_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/decks/{deck_id}/cards", response_model=List[dict])
-def get_deck_cards(deck_id: int, db: Session = Depends(get_db)):
-    deck = db.query(Deck).filter(Deck.id == deck_id).first()
+def get_deck_cards(deck_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    deck = db.query(Deck).filter(Deck.id == deck_id, Deck.user_id == current_user.id).first()
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
 
-    cards = db.query(Card).filter(Card.deck_id == deck_id).all()
+    cards = db.query(Card).filter(Card.deck_id == deck_id, Card.user_id == current_user.id).all()
     return [
         {
             "id": card.id,

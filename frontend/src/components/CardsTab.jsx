@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getCards, createCard, updateCard, deleteCard, generateAnswer, deleteDeck } from '../services/api';
+import { getCards, createCard, updateCard, deleteCard, generateAnswer, deleteDeck, getDecks } from '../services/api';
 import DeckSelection from './DeckSelection';
 
 function CardsTab({ decks, setDecks }) {
@@ -12,13 +12,13 @@ function CardsTab({ decks, setDecks }) {
   const [error, setError] = useState('');
   const [generatingAnswer, setGeneratingAnswer] = useState(false);
 
-  const refreshDecks = () => {
-    getCards(currentDeckId).then(setCards).catch(() => {});
-    // Update deck list
-    fetch('/api/decks')
-      .then(r => r.json())
-      .then(d => setDecks(d))
-      .catch(() => {});
+  const refreshDecks = async () => {
+    try {
+      const updatedDecks = await getDecks();
+      setDecks(updatedDecks);
+    } catch (err) {
+      console.error('Failed to refresh decks:', err);
+    }
   };
 
   const openDeck = async (deckId) => {

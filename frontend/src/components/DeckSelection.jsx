@@ -25,19 +25,13 @@ function DeckSelection({ decks, onSelectDeck, onCreateSuccess, showCreate = true
     }
   };
 
-  if (decks.length === 0) {
-    return (
-      <div className="deck-selection-empty">
-        <p className="placeholder-text">There are no decks yet.</p>
-        {showCreate && (
-          <button className="btn-primary" onClick={() => setShowCreateForm(true)}>
-            Create New Deck
-          </button>
-        )}
-      </div>
-    );
-  }
+  const handleCancel = () => {
+    setShowCreateForm(false);
+    setError('');
+    setNewDeckName('');
+  };
 
+  // 1. Show form FIRST so it overrides empty state
   if (showCreateForm) {
     return (
       <div className="deck-create-modal">
@@ -60,7 +54,7 @@ function DeckSelection({ decks, onSelectDeck, onCreateSuccess, showCreate = true
             <button type="submit" className="btn-primary" disabled={loading}>
               {loading ? 'Creating...' : 'Create'}
             </button>
-            <button type="button" className="btn-secondary" onClick={() => setShowCreate(false)}>
+            <button type="button" className="btn-secondary" onClick={handleCancel}>
               Cancel
             </button>
           </div>
@@ -69,6 +63,21 @@ function DeckSelection({ decks, onSelectDeck, onCreateSuccess, showCreate = true
     );
   }
 
+  // 2. Show empty state if no decks and form isn't open
+  if (decks.length === 0) {
+    return (
+      <div className="deck-selection-empty">
+        <p className="placeholder-text">There are no decks yet.</p>
+        {showCreate && (
+          <button className="btn-primary" onClick={() => setShowCreateForm(true)}>
+            Create New Deck
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // 3. Show grid of decks
   return (
     <div className="deck-selection">
       <div className="decks-grid">

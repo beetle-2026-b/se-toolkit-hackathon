@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from app.database import get_db
-from app.models import Card, AIStudySession
+from app.models import Card, AIStudySession, User
+from app.routers.auth import require_user
 from app.services.qwen_client import qwen_client
 
 router = APIRouter()
@@ -28,8 +29,8 @@ class QuizStats(BaseModel):
 
 
 @router.get("/ai-quiz/next")
-def get_next_quiz_card(db: Session = Depends(get_db), deck_id: Optional[int] = None):
-    query = db.query(Card)
+def get_next_quiz_card(db: Session = Depends(get_db), deck_id: Optional[int] = None, current_user: User = Depends(require_user)):
+    query = db.query(Card).filter(Card.user_id == current_user.id)
     if deck_id is not None:
         query = query.filter(Card.deck_id == deck_id)
     cards = query.all()
@@ -49,11 +50,11 @@ def get_next_quiz_card(db: Session = Depends(get_db), deck_id: Optional[int] = N
 
 
 @router.post("/ai-quiz/check", response_model=QuizCheckResponse)
-async def check_answer(request: QuizCheckRequest, db: Session = Depends(get_db)):
+async def check_answer(request: QuizCheckRequest, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
     if not request.user_answer.strip():
         raise HTTPException(status_code=400, detail="Answer cannot be empty")
 
-    card = db.query(Card).filter(Card.id == request.card_id).first()
+    card = db.query(Card).filter(Card.id == request.card_id, Card.user_id == current_user.id).first()
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
 
@@ -65,6 +66,7 @@ async def check_answer(request: QuizCheckRequest, db: Session = Depends(get_db))
 
     session = AIStudySession(
         card_id=card.id,
+        user_id=current_user.id,
         question=card.question,
         correct_answer=card.answer,
         user_answer=request.user_answer,
@@ -78,17 +80,12 @@ async def check_answer(request: QuizCheckRequest, db: Session = Depends(get_db))
 
 
 @router.get("/ai-quiz/stats", response_model=QuizStats)
-def get_quiz_stats(db: Session = Depends(get_db)):
-    sessions = db.query(AIStudySession).all()
+def get_quiz_stats(db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    sessions = db.query(AIStudySession).filter(AIStudySession.user_id == current_user.id).all()
 
     total = len(sessions)
     if total == 0:
-        return QuizStats(
-            total_answered=0,
-            correct_count=0,
-            partial_count=0,
-            incorrect_count=0
-        )
+        return QuizStats(total_answered=0, correct_count=0, partial_count=0, incorrect_count=0)
 
     correct_count = sum(1 for s in sessions if s.verdict == "Correct")
     partial_count = sum(1 for s in sessions if s.verdict == "Partially correct")
@@ -103,10 +100,10 @@ def get_quiz_stats(db: Session = Depends(get_db)):
 
 
 @router.get("/ai-quiz/history", response_model=List[dict])
-def get_quiz_history(limit: int = 20, db: Session = Depends(get_db)):
-    sessions = db.query(AIStudySession).order_by(
-        AIStudySession.answered_at.desc()
-    ).limit(limit).all()
+def get_quiz_history(limit: int = 20, db: Session = Depends(get_db), current_user: User = Depends(require_user)):
+    sessions = db.query(AIStudySession).filter(
+        AIStudySession.user_id == current_user.id
+    ).order_by(AIStudySession.answered_at.desc()).limit(limit).all()
 
     result = []
     for s in sessions:
@@ -125,8 +122,11 @@ def get_quiz_history(limit: int = 20, db: Session = Depends(get_db)):
 
 
 @router.post("/ai-quiz/clear-today")
-def clear_today_quiz_stats(db: Session = Depends(get_db)):
+def clear_today_quiz_stats(db: Session = Depends(get_db), current_user: User = Depends(require_user)):
     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    db.query(AIStudySession).filter(AIStudySession.answered_at >= today_start).delete()
+    db.query(AIStudySession).filter(
+        AIStudySession.user_id == current_user.id,
+        AIStudySession.answered_at >= today_start
+    ).delete()
     db.commit()
     return {"message": "Today's AI quiz progress cleared"}
