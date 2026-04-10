@@ -9,11 +9,12 @@ services:
       - ./data:/app/data
     environment:
       - QWEN_API_URL=https://openrouter.ai/api/v1/chat/completions
-      - QWEN_API_KEY=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
       - QWEN_MODEL=qwen/qwen-2.5-72b-instruct
       - DATABASE_PATH=/app/data/flashcards.db
-      - CORS_ORIGINS=["http://localhost:8000"]
+      - CORS_ORIGINS=["http://10.93.26.6:8000","http://localhost:8000"]
     dns:
       - 8.8.8.8
       - 8.8.4.4
+    env_file:
+      - .env
     restart: unless-stopped
